@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jbl-history-ingestion"
+version = "0.1.0"
+description = "Read-only ESPN Fantasy Football ingestion for JBL History"
+requires-python = ">=3.11"
+dependencies = [
+  "espn-api==0.46.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.1.1",
+]
+
+[tool.setuptools]
+package-dir = {"" = "ingestion"}
+
+[tool.setuptools.packages.find]
+where = ["ingestion"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["ingestion"]
+testpaths = ["ingestion/tests"]

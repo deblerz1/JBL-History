@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Foundation  
+> **Status:** Milestone 1 foundation implemented
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -65,6 +65,7 @@ The **2017 season is a legacy compatibility case** because ESPN changed its Fant
 - `matchups`
 - `roster_snapshots`
 - `transactions`
+- `transaction_items`
 - `players`
 - `raw_imports`
 - `sync_runs`
@@ -119,7 +120,7 @@ Server-only secrets include:
 
 - `ESPN_SWID`
 - `ESPN_S2`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY`
 - Supabase database passwords and access tokens
 
 Only placeholder values belong in the repository:
@@ -131,9 +132,10 @@ ESPN_END_YEAR=2026
 ESPN_SWID=
 ESPN_S2=
 
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_URL=https://ksoecnzmisoiyyfdgyoa.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
+DATABASE_URL=
 ```
 
 Actual secrets belong in ignored local environment files or protected deployment secrets. The ESPN integration is strictly **read-only** and will never submit lineups, transactions, trades, or league-setting changes.
@@ -155,24 +157,78 @@ Re-running an import must update existing records without creating duplicates.
 
 ## Local Setup
 
-Detailed commands will be added when the project is scaffolded. Expected prerequisites:
+Prerequisites:
 
-- Node.js and Corepack
+- Node.js 20.9+
 - Python 3.11+
 - Docker Desktop
-- Supabase CLI
 - Git
 
-Expected workflow:
+Clone and install the pinned dependencies:
 
-1. Clone the repository.
-2. Install JavaScript and Python dependencies.
-3. Copy committed environment templates to ignored local files.
-4. Start local Supabase and apply migrations.
-5. Run fixture-based tests.
-6. Add private credentials locally.
-7. Test one completed ESPN season.
-8. Backfill remaining seasons only after reconciliation succeeds.
+```bash
+git clone https://github.com/deblerz1/JBL-History.git
+cd JBL-History
+npm install
+python -m venv .venv
+```
+
+Activate the Python environment on macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Or activate it in Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Then install the ingestion package and create your ignored local environment file:
+
+```bash
+python -m pip install -e ".[dev]"
+cp .env.example .env.local
+```
+
+On Windows PowerShell, use `Copy-Item .env.example .env.local` instead of `cp`.
+
+The Supabase CLI is pinned as a project dependency. Run it through `npx`:
+
+```bash
+npx supabase start
+npx supabase db reset
+npx supabase migration list --local
+```
+
+Run all application checks:
+
+```bash
+npm run check
+python -m pytest
+```
+
+The current development workflow is:
+
+1. Start local Supabase and reset it from the committed migration and seed.
+2. Run fixture-based JavaScript and Python tests.
+3. Add private credentials only to the ignored `.env.local` file.
+4. Test one completed ESPN season in Milestone 2.
+5. Backfill remaining seasons only after reconciliation succeeds.
+
+## Current Verification
+
+Milestone 1 includes:
+
+- A pinned Next.js and Supabase JavaScript toolchain
+- A pinned Python ingestion package using `espn-api`
+- A private-first Postgres migration with RLS enabled and no browser policies
+- A local seed for ESPN league `1550163`
+- Sanitized ESPN fixtures with deterministic transformation tests
+- Lint, type-check, unit-test, and production-build scripts
+
+The foundation does not make live ESPN requests and does not apply its migration to the hosted Supabase project.
 
 ## Links
 

@@ -1,0 +1,36 @@
+{
+  "id": 1550163,
+  "seasonId": 2025,
+  "settings": {"name": "Joey Bags Fantasy League"},
+  "status": {"isActive": false},
+  "members": [
+    {"id": "{SANITIZED-MEMBER-A}", "displayName": "Manager Alpha"},
+    {"id": "{SANITIZED-MEMBER-B}", "displayName": "Manager Bravo"}
+  ],
+  "teams": [
+    {
+      "id": 1,
+      "owners": ["{SANITIZED-MEMBER-A}"],
+      "location": "Fixture",
+      "nickname": "Foxes",
+      "abbrev": "FOX",
+      "record": {"overall": {"wins": 1, "losses": 0, "ties": 0, "pointsFor": 124.5, "pointsAgainst": 117.25}}
+    },
+    {
+      "id": 2,
+      "owners": ["{SANITIZED-MEMBER-B}"],
+      "location": "Sample",
+      "nickname": "Sharks",
+      "abbrev": "SHK",
+      "record": {"overall": {"wins": 0, "losses": 1, "ties": 0, "pointsFor": 117.25, "pointsAgainst": 124.5}}
+    }
+  ],
+  "schedule": [
+    {
+      "id": 1,
+      "matchupPeriodId": 1,
+      "home": {"teamId": 1, "totalPoints": 124.5},
+      "away": {"teamId": 2, "totalPoints": 117.25}
+    }
+  ]
+}
