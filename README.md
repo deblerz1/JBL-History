@@ -254,6 +254,16 @@ Reports are written to the ignored `reports/espn-availability.json` path because
 they can contain private league metadata. These commands only read ESPN; they do not
 change lineups or write to Supabase.
 
+### Browser-only connectivity test
+
+If local command-line access is unavailable, store `ESPN_SWID` and `ESPN_S2` as
+GitHub Actions repository secrets. Then open **Actions → ESPN connectivity → Run
+workflow**. Start with the `validation` scope; it requires both 2025 and 2026 to be
+accessible. The `full-history` scope probes 2017–2026 independently.
+
+The workflow has read-only repository permissions, does not receive Supabase
+credentials, and never uploads the private availability report as an artifact.
+
 ## Current Verification
 
 Milestone 1 includes:

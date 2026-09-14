@@ -1,0 +1,107 @@
+name: ESPN connectivity
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Seasons to probe
+        required: true
+        default: validation
+        type: choice
+        options:
+          - validation
+          - full-history
+
+permissions:
+  contents: read
+
+concurrency:
+  group: espn-connectivity
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Probe private ESPN league
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ESPN_LEAGUE_ID: "1550163"
+      ESPN_START_YEAR: "2017"
+      ESPN_END_YEAR: "2026"
+      ESPN_SWID: ${{ secrets.ESPN_SWID }}
+      ESPN_S2: ${{ secrets.ESPN_S2 }}
+
+    steps:
+      - name: Check out JBL History
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Verify required secrets are configured
+        shell: bash
+        run: |
+          set +x
+          if [[ -z "$ESPN_SWID" || -z "$ESPN_S2" ]]; then
+            echo "Required ESPN repository secrets are missing." >&2
+            exit 2
+          fi
+
+      - name: Install pinned importer
+        run: python -m pip install .
+
+      - name: Authenticate against a completed season
+        run: python -m jbl_history.cli auth-test --year 2025
+
+      - name: Probe validation seasons
+        if: inputs.scope == 'validation'
+        run: python -m jbl_history.cli discover --year 2025 --year 2026 --details
+
+      - name: Require both validation seasons
+        if: inputs.scope == 'validation'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("reports/espn-availability.json").read_text())
+          expected = {2025, 2026}
+          accessible = set(report["accessible_years"])
+          missing = sorted(expected - accessible)
+          if missing:
+              raise SystemExit(f"Validation failed; inaccessible seasons: {missing}")
+          PY
+
+      - name: Probe full history
+        if: inputs.scope == 'full-history'
+        run: python -m jbl_history.cli discover --details
+
+      - name: Publish sanitized job summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("reports/espn-availability.json")
+          summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          if not path.exists():
+              summary.write_text("## ESPN connectivity\n\nNo availability report was produced.\n")
+              raise SystemExit(0)
+
+          report = json.loads(path.read_text())
+          lines = [
+              "## ESPN connectivity",
+              "",
+              f"- League ID: `{report['league_id']}`",
+              f"- Requested seasons: `{report['requested_years']}`",
+              f"- Accessible seasons: `{report['accessible_years']}`",
+              "",
+              "The private report was not uploaded as an artifact.",
+          ]
+          summary.write_text("\n".join(lines) + "\n")
+          PY
