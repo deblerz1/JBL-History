@@ -98,7 +98,32 @@ jobs:
               f"- Requested seasons: `{report['requested_years']}`",
               f"- Accessible seasons: `{report['accessible_years']}`",
               "",
-              "The private report was not uploaded as an artifact.",
+              "| Season | Access | Teams | Members | Draft | Box scores | Transactions |",
+              "| ---: | :---: | ---: | ---: | ---: | :---: | :---: |",
           ]
+          for season in report["seasons"]:
+              probes = season["probes"]
+              def cell(name):
+                  probe = probes.get(name)
+                  if not probe or not probe["available"]:
+                      return "—"
+                  count = probe.get("count")
+                  return "✓" if count is None else str(count)
+
+              lines.append(
+                  "| {year} | {access} | {teams} | {members} | {draft} | {boxes} | {tx} |".format(
+                      year=season["year"],
+                      access="✓" if season["accessible"] else "✗",
+                      teams=cell("teams"),
+                      members=cell("members"),
+                      draft=cell("draft"),
+                      boxes=cell("weekly_box_scores"),
+                      tx=cell("transactions"),
+                  )
+              )
+          lines.extend([
+              "",
+              "The private report was not uploaded as an artifact.",
+          ])
           summary.write_text("\n".join(lines) + "\n")
           PY
