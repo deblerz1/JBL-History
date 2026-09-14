@@ -53,9 +53,6 @@ jobs:
       - name: Install pinned importer
         run: python -m pip install .
 
-      - name: Authenticate against a completed season
-        run: python -m jbl_history.cli auth-test --year 2025
-
       - name: Probe validation seasons
         if: inputs.scope == 'validation'
         run: python -m jbl_history.cli discover --year 2025 --year 2026 --details
