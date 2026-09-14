@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 1 foundation implemented
+> **Status:** Milestone 2 ESPN connectivity in progress
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -83,8 +83,10 @@ Persistent members will be modeled separately from season-specific teams because
 
 ### 2. ESPN Connectivity
 
-- Test private-league authentication
-- Discover accessible seasons
+- [x] Add a credential-safe private-league authentication command
+- [x] Add independent season discovery and JSON availability reporting
+- [ ] Run live authentication with locally stored ESPN cookies
+- [ ] Discover accessible seasons using the private league
 - Validate one active and one completed season
 - Handle 2017 through a legacy compatibility path
 - Produce a data-availability report for every season
@@ -216,6 +218,41 @@ The current development workflow is:
 3. Add private credentials only to the ignored `.env.local` file.
 4. Test one completed ESPN season in Milestone 2.
 5. Backfill remaining seasons only after reconciliation succeeds.
+
+## Milestone 2: Private ESPN Connection
+
+Sign in to ESPN in Chrome or Edge, open Developer Tools, and select **Application →
+Storage → Cookies**. Copy the values of the `SWID` and `espn_s2` cookies into the
+ignored `.env.local` file. Never paste these values into chat, issues, commits, or
+client-side environment variables.
+
+```dotenv
+ESPN_SWID={your-value-including-braces}
+ESPN_S2=your-long-cookie-value
+```
+
+Test a completed season first:
+
+```bash
+jbl-history auth-test --year 2025
+```
+
+Then probe the completed 2025 season and active 2026 season with detailed checks:
+
+```bash
+jbl-history discover --year 2025 --year 2026 --details
+```
+
+Finally, probe the full configured range. Each season is isolated, so an unavailable
+legacy season does not stop the rest of the report:
+
+```bash
+jbl-history discover --details
+```
+
+Reports are written to the ignored `reports/espn-availability.json` path because
+they can contain private league metadata. These commands only read ESPN; they do not
+change lineups or write to Supabase.
 
 ## Current Verification
 

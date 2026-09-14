@@ -52,3 +52,6 @@ next-env.d.ts
 # Supabase local state and secrets
 supabase/.branches
 supabase/.temp
+
+# Generated ESPN reports may contain private league metadata
+reports/
