@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 2 ESPN connectivity in progress
+> **Status:** Milestone 2 ESPN connectivity complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -85,11 +85,11 @@ Persistent members will be modeled separately from season-specific teams because
 
 - [x] Add a credential-safe private-league authentication command
 - [x] Add independent season discovery and JSON availability reporting
-- [ ] Run live authentication with locally stored ESPN cookies
-- [ ] Discover accessible seasons using the private league
-- Validate one active and one completed season
-- Handle 2017 through a legacy compatibility path
-- Produce a data-availability report for every season
+- [x] Authenticate through encrypted GitHub Actions secrets
+- [x] Validate the completed 2025 and active 2026 seasons
+- [x] Confirm league-level access for every season from 2017–2026
+- [x] Handle 2017 through a non-blocking legacy compatibility path
+- [x] Produce a sanitized data-availability summary for every season
 
 ### 3. Historical Backfill
 
@@ -263,6 +263,14 @@ accessible. The `full-history` scope probes 2017–2026 independently.
 
 The workflow has read-only repository permissions, does not receive Supabase
 credentials, and never uploads the private availability report as an artifact.
+
+### Verified connectivity
+
+On September 14, 2026, the GitHub Actions full-history probe authenticated to the
+private JBL league and confirmed league-level access for all 10 requested seasons,
+2017–2026. The 2017 season remains a legacy normalization case, and the community
+`espn-api` package does not expose weekly box-score or transaction helpers before
+2019; those gaps will be handled explicitly during the historical backfill.
 
 ## Current Verification
 
