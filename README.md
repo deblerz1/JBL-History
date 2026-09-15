@@ -95,12 +95,24 @@ Persistent members will be modeled separately from season-specific teams because
 
 - [x] Deploy the private-first JBL Supabase schema
 - [x] Add an atomic, JBL-project-locked season import RPC
-- [ ] Reconcile and idempotency-test the 2025 baseline import
+- [x] Reconcile and idempotency-test the 2025 baseline import
 - [ ] Import seasons 2017–2026
 - Preserve recoverable raw provider payloads
 - Normalize settings, members, teams, drafts, matchups, rosters, and transactions
 - Make imports idempotent and safely resumable
 - Reconcile imported totals against ESPN
+
+### Verified 2025 baseline
+
+The initial 2025 import was run twice through GitHub Actions. Both runs returned
+the same normalized counts: 12 ESPN members, 10 season teams, and 86 scheduled
+matchups. Supabase contains one league row, one 2025 season row, no duplicate
+matchup keys, and no teams without an owner link. Team totals reconcile at 70 wins,
+70 losses, zero ties, and 16,666.8 points on both the for and against sides.
+
+This baseline covers league settings, members, season teams, standings, and matchup
+scores. Draft picks, weekly roster snapshots, and transactions remain separate
+backfill stages and will be reconciled before the full historical import runs.
 
 ### 4. Dashboard
 
