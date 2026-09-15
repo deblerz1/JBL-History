@@ -114,6 +114,11 @@ This baseline covers league settings, members, season teams, standings, and matc
 scores. Draft picks, weekly roster snapshots, and transactions remain separate
 backfill stages and will be reconciled before the full historical import runs.
 
+The extended importer now collects draft picks for any season ESPN exposes and
+weekly roster snapshots plus transaction activity for 2019 and later. Each season
+runs independently, records structured availability warnings, and upserts stable
+provider identities so interrupted or repeated backfills can resume safely.
+
 ### 4. Dashboard
 
 - League overview and all-time standings
