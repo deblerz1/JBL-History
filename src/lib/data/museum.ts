@@ -3,6 +3,9 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export type Champion = { year: number; teamName: string; ownerName: string | null; runnerUpTeamName: string; championScore: number; runnerUpScore: number };
 export type ManagerCareer = { teamName: string; ownerName: string | null; championships: number; winPercentage: number | null; playoffAppearances: number };
+export type PlayoffTeam = { id: string; seed: number | null; teamName: string; ownerName: string | null; score: number; winner: boolean };
+export type PlayoffGame = { id: string; round: number; roundCount: number; matchupPeriod: number; scoringPeriods: number[]; home: PlayoffTeam; away: PlayoffTeam };
+export type PlayoffSeason = { year: number; status: string; playoffTeamCount: number; games: PlayoffGame[] };
 
 async function identityMap(supabase: ReturnType<typeof createServerSupabaseClient>) {
   const { data, error } = await supabase.from("analytics_member_identities").select("member_id,public_name");
@@ -60,4 +63,37 @@ export async function getLeagueRecords() {
   const [{ data, error }, identities] = await Promise.all([supabase.from("analytics_league_records").select("record_type,record_rank,year,matchup_period,member_id,team_name,opponent_team_name,record_value").lte("record_rank", 10).order("record_type").order("record_rank"),identityMap(supabase)]);
   if (error) throw new Error(`League records query failed: ${error.message}`);
   return data.map(row=>({...row,public_name:identities.get(row.member_id)??null}));
+}
+
+export async function getPlayoffArchive(): Promise<PlayoffSeason[]> {
+  const supabase=createServerSupabaseClient();
+  const [configResult,gamesResult,standingsResult,settingsResult,identities]=await Promise.all([
+    supabase.from("analytics_season_config").select("season_id,year,status,playoff_team_count").order("year",{ascending:false}),
+    supabase.from("analytics_playoff_games").select("year,matchup_id,matchup_period,playoff_round,playoff_round_count,home_team_id,away_team_id,home_score,away_score,winner_team_id").order("year",{ascending:false}).order("playoff_round"),
+    supabase.from("analytics_season_standings").select("season_team_id,member_id,team_name,playoff_seed"),
+    supabase.from("scoring_settings").select("season_id,settings"),
+    identityMap(supabase),
+  ]);
+  if(configResult.error) throw new Error(`Playoff configuration query failed: ${configResult.error.message}`);
+  if(gamesResult.error) throw new Error(`Playoff games query failed: ${gamesResult.error.message}`);
+  if(standingsResult.error) throw new Error(`Playoff teams query failed: ${standingsResult.error.message}`);
+  if(settingsResult.error) throw new Error(`Playoff schedule query failed: ${settingsResult.error.message}`);
+
+  const teams=new Map(standingsResult.data.map(row=>[row.season_team_id,row]));
+  const periodMaps=new Map(settingsResult.data.map(row=>{
+    const settings=row.settings as {scheduleSettings?:{matchupPeriods?:Record<string,number[]>}};
+    return [row.season_id,settings.scheduleSettings?.matchupPeriods??{}] as const;
+  }));
+
+  return configResult.data.map(season=>({
+    year:Number(season.year), status:season.status, playoffTeamCount:Number(season.playoff_team_count),
+    games:gamesResult.data.filter(game=>game.year===season.year).map(game=>{
+      const home=teams.get(game.home_team_id); const away=teams.get(game.away_team_id);
+      if(!home||!away) throw new Error(`Playoff game ${game.matchup_id} is missing a team`);
+      const periods=periodMaps.get(season.season_id)?.[String(game.matchup_period)]??[Number(game.matchup_period)];
+      return {id:game.matchup_id,round:Number(game.playoff_round),roundCount:Number(game.playoff_round_count),matchupPeriod:Number(game.matchup_period),scoringPeriods:periods.map(Number),
+        home:{id:home.season_team_id,seed:home.playoff_seed,teamName:home.team_name,ownerName:identities.get(home.member_id)??null,score:Number(game.home_score),winner:game.winner_team_id===game.home_team_id},
+        away:{id:away.season_team_id,seed:away.playoff_seed,teamName:away.team_name,ownerName:identities.get(away.member_id)??null,score:Number(game.away_score),winner:game.winner_team_id===game.away_team_id}};
+    }),
+  }));
 }

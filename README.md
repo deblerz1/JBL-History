@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 4C.1 identity and draft correction complete
+> **Status:** Milestone 4D playoff museum complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -145,6 +145,7 @@ remains active for future refreshes.
 - [x] Add a shared league access gate
 - [x] Build the trophy-room museum shell and champions timeline
 - [x] Add all-time manager, season, rivalry, draft, and records pages
+- [x] Add the complete historical playoff bracket museum
 - [ ] Add the read-only league historian chatbot
 
 ### Private museum access
@@ -205,6 +206,21 @@ The draft exhibit now shows the actual players selected instead of auction-spend
 summaries. ESPN classified 2017–2018 as snake drafts and later imported seasons as
 offline drafts. Stored bid values are zero, so the interface only displays a bid
 when ESPN supplies a positive amount rather than implying reliable auction prices.
+
+### Playoff museum
+
+The protected `/museum/playoffs` exhibit reconstructs every completed bracket from
+2017–2025. Visitors can switch seasons without leaving the page and see seeds,
+historical team names, privacy-safe owner labels, round names, final scores, and
+gold-highlighted winners. Six-team seasons explicitly note the top-two-seed byes,
+while the active 2026 season has a deliberate waiting state until postseason games
+exist.
+
+Scoring-period mappings come directly from each season's saved ESPN settings.
+Ordinary playoff games show their individual week, while the two-week series used
+in 2023 and 2024 are labeled as aggregates and show the correct week range. The
+layout retains an ESPN-style left-to-right bracket on larger screens and a
+horizontal, touch-friendly bracket on phones.
 
 Authentication is enforced by the shared `/museum` layout, so every current and
 future exhibit inherits the same signed-cookie access check. All data fetching

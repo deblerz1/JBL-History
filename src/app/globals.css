@@ -36,7 +36,7 @@ button,input { font:inherit; } a { color:inherit; text-decoration:none; }
 .nav-brand { display:flex; align-items:center; gap:14px; } .mini-mark { width:44px; height:44px; border-radius:50%; font-size:.8rem; }
 .nav-brand>span:last-child { display:grid; gap:2px; } .nav-brand strong { font-family:Georgia,serif; font-size:1.1rem; }
 .nav-brand small { color:#778078; font-size:.58rem; letter-spacing:.12em; text-transform:uppercase; }
-.museum-nav nav { display:flex; gap:35px; color:#aeb2a8; font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.museum-nav nav { display:flex; gap:24px; color:#aeb2a8; font-size:.7rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; }
 .museum-nav nav a:hover { color:var(--gold-light); }
 .quiet-button { border:1px solid var(--line); background:transparent; padding:10px 14px; color:#aaa; cursor:pointer; font-size:.68rem; text-transform:uppercase; }
 .museum-intro { width:min(1200px,100%); margin:0 auto; padding:clamp(70px,9vw,130px) 0 70px; text-align:center; }
@@ -70,7 +70,7 @@ button,input { font:inherit; } a { color:inherit; text-decoration:none; }
 .curator-card h2 { margin:0 0 15px; font-size:3.2rem; } .curator-card>p:not(.eyebrow) { color:var(--muted); line-height:1.65; }
 .curator-prompt { margin:25px 0 20px; border-left:2px solid var(--gold); padding:13px 16px; color:#d4d2c8; font-family:Georgia,serif; font-style:italic; }
 .coming-label,.collection-grid small { color:var(--gold-light); font-size:.58rem; font-weight:700; letter-spacing:.15em; text-transform:uppercase; }
-.collection-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.collection-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
 .collection-grid article { min-height:245px; padding:26px; border-top:1px solid var(--gold); background:rgba(255,255,255,.025); }
 .collection-grid article>span { color:#6f776e; font-family:Georgia,serif; } .collection-grid h3 { margin:55px 0 12px; font-family:Georgia,serif; font-size:1.5rem; font-weight:400; }
 .collection-grid p { min-height:58px; color:#858d84; font-size:.8rem; line-height:1.55; }
@@ -131,8 +131,40 @@ button,input { font:inherit; } a { color:inherit; text-decoration:none; }
 .record-panel li strong { font-family:Georgia,serif; font-weight:400; } .record-panel li small { overflow:hidden; color:#6e766f; font-size:.6rem; text-overflow:ellipsis; white-space:nowrap; }
 .record-panel .record-owner { overflow:visible; text-overflow:clip; }
 .record-panel li>b { color:var(--gold-light); font-family:var(--font-geist-mono),monospace; font-size:.8rem; text-align:right; }
+.playoff-controls { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:22px; }
+.playoff-controls>div { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; scrollbar-color:var(--gold) #13241b; }
+.season-chip { flex:none; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.02); padding:10px 14px; color:#8e958b; cursor:pointer; font-size:.66rem; font-weight:700; letter-spacing:.08em; }
+.season-chip:hover,.season-chip.active { border-color:var(--gold); color:var(--gold-light); background:rgba(201,160,75,.08); }
+.playoff-format { flex:none; color:#747c74; font-size:.63rem; letter-spacing:.1em; text-transform:uppercase; }
+.bracket-shell { overflow-x:auto; border:1px solid rgba(255,255,255,.09); background:radial-gradient(circle at 100% 50%,rgba(201,160,75,.06),transparent 38%),rgba(255,255,255,.015); }
+.bracket { display:grid; grid-auto-columns:minmax(255px,1fr); grid-auto-flow:column; gap:44px; min-width:850px; padding:30px; }
+.bracket-round { display:flex; min-width:0; flex-direction:column; }
+.round-heading { margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+.round-heading span { display:block; color:var(--gold-light); font-family:Georgia,serif; font-size:1.2rem; }
+.round-heading small { color:#6f776f; font-size:.57rem; letter-spacing:.12em; text-transform:uppercase; }
+.round-games { display:flex; flex:1; flex-direction:column; justify-content:space-around; gap:22px; }
+.playoff-game { position:relative; border:1px solid rgba(255,255,255,.11); background:#0a1711; box-shadow:0 14px 30px rgba(0,0,0,.16); }
+.playoff-game::after { position:absolute; top:50%; left:100%; width:45px; border-top:1px solid rgba(201,160,75,.22); content:""; }
+.bracket-round:last-child .playoff-game::after { display:none; }
+.game-meta { display:flex; justify-content:space-between; padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.07); color:#687168; font-size:.54rem; letter-spacing:.09em; text-transform:uppercase; }
+.playoff-team-row { display:grid; grid-template-columns:24px minmax(0,1fr) auto; align-items:center; gap:9px; min-height:61px; padding:9px 12px; border-top:1px solid rgba(255,255,255,.06); }
+.playoff-team-row:first-of-type { border-top:0; }
+.playoff-team-row.winner { background:linear-gradient(90deg,rgba(201,160,75,.12),transparent); }
+.playoff-seed { display:grid; width:22px; height:22px; place-items:center; border:1px solid rgba(255,255,255,.12); border-radius:50%; color:#7d857d; font-family:Georgia,serif; font-size:.7rem; }
+.playoff-team-row.winner .playoff-seed { border-color:var(--gold); color:var(--gold-light); }
+.playoff-team-copy { display:grid; min-width:0; gap:3px; }
+.playoff-team-copy strong { overflow:hidden; font-family:Georgia,serif; font-size:.93rem; font-weight:400; text-overflow:ellipsis; white-space:nowrap; }
+.playoff-team-copy small { color:#737b73; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; }
+.playoff-team-row>b { color:#aeb4aa; font-family:var(--font-geist-mono),monospace; font-size:.8rem; }
+.playoff-team-row.winner>b { color:var(--gold-light); }
+.championship-game { border-color:rgba(229,199,124,.42); }
+.bracket-note { margin:16px 0 0; color:#727a72; font-size:.68rem; line-height:1.6; }
+.playoff-empty { display:grid; min-height:360px; place-content:center; padding:45px; border:1px solid rgba(255,255,255,.09); background:rgba(255,255,255,.015); text-align:center; }
+.playoff-empty span { color:var(--gold-light); font-family:Georgia,serif; font-size:3rem; }
+.playoff-empty h2 { margin:15px 0 8px; font-family:Georgia,serif; font-size:2rem; font-weight:400; }
+.playoff-empty p { max-width:470px; margin:0; color:#7c847c; line-height:1.6; }
 .collection-grid>a { display:block; } .collection-grid>a article { height:100%; transition:border-color .2s,background .2s; }
 .collection-grid>a:hover article { border-color:var(--gold-light); background:rgba(201,160,75,.06); }
 @media (max-width:900px) { .entry-hero,.museum-grid { grid-template-columns:1fr; } .entry-copy { text-align:center; } .entry-deck { margin-left:auto; margin-right:auto; } .entry-hero { padding:60px 0; } .access-card { width:min(500px,100%); margin:auto; } .museum-nav nav { display:none; } .collection-grid { grid-template-columns:repeat(2,1fr); } .rivalry-grid,.record-columns,.draft-team-grid { grid-template-columns:1fr; } }
-@media (max-width:560px) { .public-entry { padding-top:24px; } .entry-header { justify-content:center; } .entry-copy h1 { font-size:3.35rem; } .entry-footer { gap:9px; flex-wrap:wrap; } .entry-footer i { display:none; } .museum-nav { min-height:75px; } .nav-brand small { display:none; } .quiet-button { padding:8px; font-size:.58rem; } .museum-intro { text-align:left; padding:70px 0 50px; } .museum-intro h1 { font-size:3.4rem; } .section-heading { align-items:start; flex-direction:column; gap:8px; } .champion-gallery,.museum-grid,.collections { padding:45px 0; } .champion-track { margin-right:-18px; } .manager-list li { grid-template-columns:35px minmax(0,1fr) 55px; } .manager-stat:last-child { display:none; } .collection-grid { grid-template-columns:1fr; } .collection-grid article { min-height:210px; } .museum-footer { flex-direction:column; gap:9px; } .exhibit-header { padding:55px 0 38px; } .exhibit-header>a { margin-bottom:35px; } .season-card summary { grid-template-columns:1fr auto 20px; padding:20px 16px; } .season-card summary>span:nth-child(2) { max-width:130px; text-align:right; } .season-body { padding:0 12px 16px; } .season-champion { align-items:start; flex-direction:column; gap:5px; } .draft-team header { padding:17px 15px; } .draft-team ol { padding:0 15px; } .draft-team li { grid-template-columns:22px minmax(0,1fr); gap:9px; padding:9px 0; } .draft-team li>b { grid-column:2; text-align:left; } .rivalry-card { padding-left:14px; padding-right:14px; } .record-panel { padding:24px 18px; } }
+@media (max-width:560px) { .public-entry { padding-top:24px; } .entry-header { justify-content:center; } .entry-copy h1 { font-size:3.35rem; } .entry-footer { gap:9px; flex-wrap:wrap; } .entry-footer i { display:none; } .museum-nav { min-height:75px; } .nav-brand small { display:none; } .quiet-button { padding:8px; font-size:.58rem; } .museum-intro { text-align:left; padding:70px 0 50px; } .museum-intro h1 { font-size:3.4rem; } .section-heading { align-items:start; flex-direction:column; gap:8px; } .champion-gallery,.museum-grid,.collections { padding:45px 0; } .champion-track { margin-right:-18px; } .manager-list li { grid-template-columns:35px minmax(0,1fr) 55px; } .manager-stat:last-child { display:none; } .collection-grid { grid-template-columns:1fr; } .collection-grid article { min-height:210px; } .museum-footer { flex-direction:column; gap:9px; } .exhibit-header { padding:55px 0 38px; } .exhibit-header>a { margin-bottom:35px; } .season-card summary { grid-template-columns:1fr auto 20px; padding:20px 16px; } .season-card summary>span:nth-child(2) { max-width:130px; text-align:right; } .season-body { padding:0 12px 16px; } .season-champion { align-items:start; flex-direction:column; gap:5px; } .draft-team header { padding:17px 15px; } .draft-team ol { padding:0 15px; } .draft-team li { grid-template-columns:22px minmax(0,1fr); gap:9px; padding:9px 0; } .draft-team li>b { grid-column:2; text-align:left; } .rivalry-card { padding-left:14px; padding-right:14px; } .record-panel { padding:24px 18px; } .playoff-controls { align-items:start; flex-direction:column; } .playoff-controls>div { width:calc(100vw - 36px); } .bracket-shell { margin-right:-18px; } .bracket { gap:30px; min-width:790px; padding:22px 18px; } }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
