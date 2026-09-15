@@ -6,6 +6,9 @@ from typing import Any
 
 
 def _team_name(team: dict[str, Any]) -> str:
+    canonical_name = str(team.get("name") or "").strip()
+    if canonical_name:
+        return canonical_name
     location = str(team.get("location") or "").strip()
     nickname = str(team.get("nickname") or "").strip()
     name = " ".join(part for part in (location, nickname) if part)

@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 4C core museum exhibits complete
+> **Status:** Milestone 4C.1 identity and draft correction complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -183,9 +183,28 @@ private analytics contract:
 - A 10-season archive with 86 final standings rows, season-specific team names,
   champions, title-game scores, seeds, and points for/against
 - A 53-pair head-to-head rivalry ledger with wins, ties, meetings, and total points
-- A 10-season, 86-team draft ledger with total spend, average and maximum bids,
-  one-dollar selections, and keepers
+- A 10-season draft archive with 1,376 actual selections grouped by historical
+  team, including round, pick, player, position, keeper, and available bid data
 - Top-ten galleries for the highest and lowest completed weekly scores
+
+### Identity and draft correction
+
+The archive now preserves ESPN's canonical season-specific team name instead of
+falling back to labels such as `Team 3`. All 86 team-season records resolve to 53
+distinct historical team names. Career views continue to use each manager's most
+recent team identity, while season, championship, draft, rivalry, and weekly-record
+exhibits retain the name used at that point in league history.
+
+Approved privacy-safe owner labels appear beneath team names throughout the
+protected museum. Labels use first names only, with `Jack P` and `Jack V` to
+disambiguate the two active Jacks and `Foz` as Joe's approved display name. Full
+names remain excluded from the dashboard contract. A private import trigger
+reapplies both canonical team names and approved labels after future ESPN refreshes.
+
+The draft exhibit now shows the actual players selected instead of auction-spend
+summaries. ESPN classified 2017–2018 as snake drafts and later imported seasons as
+offline drafts. Stored bid values are zero, so the interface only displays a bid
+when ESPN supplies a positive amount rather than implying reliable auction prices.
 
 Authentication is enforced by the shared `/museum` layout, so every current and
 future exhibit inherits the same signed-cookie access check. All data fetching
@@ -207,11 +226,11 @@ All nine champions from 2017–2025 are championship-matchup winners and match t
 season's first-place finisher.
 
 The analytics layer currently resolves 11 career managers, 53 head-to-head rivalry
-pairs, 86 team-season draft summaries, and 1,220 completed team-game performances.
-No member display names or other personal-name columns are exposed. `anon` and
-`authenticated` have no access; only the server-side `service_role` can select the
-views. The access gate in the next dashboard stage will proxy approved requests
-without sending the service-role secret to a browser.
+pairs, 1,376 draft selections, and 1,220 completed team-game performances. Only the
+approved privacy-safe labels are exposed to the server-side dashboard contract;
+full member names remain private. `anon` and `authenticated` have no access; only
+the server-side `service_role` can select the views. The access gate proxies
+approved requests without sending the service-role secret to a browser.
 
 ### 5. Analytics and MCP
 

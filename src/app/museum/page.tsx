@@ -13,13 +13,13 @@ export default async function MuseumPage() {
     <section className="champion-gallery" id="champions">
       <div className="section-heading"><div><p className="eyebrow">The champions wing</p><h2>League immortality</h2></div><p>{champions.length} titles catalogued</p></div>
       <div className="champion-track">{champions.map((champion, index) => <article className={index === 0 ? "champion-card latest" : "champion-card"} key={champion.year}>
-        <div className="year-medallion"><span>{champion.year}</span></div>{index === 0 && <span className="current-plaque">Reigning champion</span>}<h3>{champion.teamName}</h3><p>Def. {champion.runnerUpTeamName}</p><strong>{champion.championScore.toFixed(2)}—{champion.runnerUpScore.toFixed(2)}</strong>
+        <div className="year-medallion"><span>{champion.year}</span></div>{index === 0 && <span className="current-plaque">Reigning champion</span>}<h3>{champion.teamName}</h3>{champion.ownerName&&<small className="owner-label">{champion.ownerName}</small>}<p>Def. {champion.runnerUpTeamName}</p><strong>{champion.championScore.toFixed(2)}—{champion.runnerUpScore.toFixed(2)}</strong>
       </article>)}</div>
     </section>
 
     <section className="museum-grid" id="rankings">
       <article className="leaderboard-panel"><div className="section-heading compact"><div><p className="eyebrow">The eternal table</p><h2>Manager rankings</h2></div><span>By titles, then win %</span></div>
-        <ol className="manager-list">{managers.map((manager, index) => <li key={manager.teamName}><span className="rank">{String(index + 1).padStart(2, "0")}</span><div><strong>{manager.teamName}</strong><small>{manager.playoffAppearances} playoff appearances</small></div><div className="manager-stat"><strong>{manager.championships}</strong><small>{manager.championships === 1 ? "title" : "titles"}</small></div><div className="manager-stat"><strong>{manager.winPercentage === null ? "—" : `${(manager.winPercentage * 100).toFixed(1)}%`}</strong><small>win rate</small></div></li>)}</ol>
+        <ol className="manager-list">{managers.map((manager, index) => <li key={manager.teamName}><span className="rank">{String(index + 1).padStart(2, "0")}</span><div><strong>{manager.teamName}</strong><small>{manager.ownerName} · {manager.playoffAppearances} playoff appearances</small></div><div className="manager-stat"><strong>{manager.championships}</strong><small>{manager.championships === 1 ? "title" : "titles"}</small></div><div className="manager-stat"><strong>{manager.winPercentage === null ? "—" : `${(manager.winPercentage * 100).toFixed(1)}%`}</strong><small>win rate</small></div></li>)}</ol>
       </article>
       <aside className="curator-card"><p className="eyebrow">League historian</p><h2>Ask the archive.</h2><p>Who owns the rivalry? What was the worst championship loss? The statistical historian is being prepared for a future exhibit.</p><div className="curator-prompt">“Who has the best career win percentage?”</div><span className="coming-label">Coming later</span></aside>
     </section>

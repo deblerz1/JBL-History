@@ -27,3 +27,12 @@ def test_normalization_is_deterministic_for_idempotent_upserts() -> None:
     payload = load_fixture()
 
     assert normalize_league_payload(payload) == normalize_league_payload(payload)
+
+
+def test_prefers_canonical_team_name_when_espn_provides_it() -> None:
+    payload = load_fixture()
+    payload["teams"][0]["name"] = "Historical Team Name"
+
+    normalized = normalize_league_payload(payload)
+
+    assert normalized["season_teams"][0]["team_name"] == "Historical Team Name"
