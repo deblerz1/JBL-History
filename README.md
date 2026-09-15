@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 4B private museum shell complete
+> **Status:** Milestone 4C core museum exhibits complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -144,7 +144,7 @@ remains active for future refreshes.
 - [x] Build the private analytics contract for the dashboard
 - [x] Add a shared league access gate
 - [x] Build the trophy-room museum shell and champions timeline
-- [ ] Add all-time manager, season, rivalry, draft, and records pages
+- [x] Add all-time manager, season, rivalry, draft, and records pages
 - [ ] Add the read-only league historian chatbot
 
 ### Private museum access
@@ -172,6 +172,24 @@ JBL_SESSION_SECRET=generate-a-different-random-32-byte-or-longer-value
 
 Changing `JBL_ACCESS_CODE` changes what members use on their next login. Changing
 `JBL_SESSION_SECRET` immediately invalidates every existing museum session.
+
+### Core museum exhibits
+
+The protected museum now includes five server-rendered exhibits backed by the
+private analytics contract:
+
+- The full 11-manager career table with championships, regular-season and playoff
+  records, win percentages, playoff appearances, and career points
+- A 10-season archive with 86 final standings rows, season-specific team names,
+  champions, title-game scores, seeds, and points for/against
+- A 53-pair head-to-head rivalry ledger with wins, ties, meetings, and total points
+- A 10-season, 86-team draft ledger with total spend, average and maximum bids,
+  one-dollar selections, and keepers
+- Top-ten galleries for the highest and lowest completed weekly scores
+
+Authentication is enforced by the shared `/museum` layout, so every current and
+future exhibit inherits the same signed-cookie access check. All data fetching
+remains inside server components and uses the server-only Supabase client.
 
 ### Verified private analytics foundation
 
