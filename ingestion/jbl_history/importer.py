@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import hashlib
+import math
 from typing import Any, Callable
 
 from espn_api.football import League
@@ -19,6 +20,16 @@ LINEUP_SLOTS = {
     0: "QB", 2: "RB", 4: "WR", 6: "TE", 16: "D/ST", 17: "K",
     20: "BE", 21: "IR", 23: "FLEX", 24: "ER", 25: "Rookie",
 }
+
+
+def _finite_number(value: Any) -> float | None:
+    """Return JSON/Postgres-safe numeric data from ESPN live projections."""
+
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 def _fetch_history_bundle(league: League, year: int) -> dict[str, Any]:
@@ -87,9 +98,13 @@ def _fetch_history_bundle(league: League, year: int) -> dict[str, Any]:
                                 "espn_player_id": player_id,
                                 "lineup_slot": slot,
                                 "lineup_slot_id": next((key for key, value in LINEUP_SLOTS.items() if value == slot), None),
-                                "points": float(getattr(entry, "points", 0)),
-                                "projected_points": float(getattr(entry, "projected_points", 0)),
-                                "raw_data": {key: value for key, value in raw.items() if isinstance(value, (str, int, float, bool, type(None)))},
+                                "points": _finite_number(getattr(entry, "points", 0)),
+                                "projected_points": _finite_number(getattr(entry, "projected_points", 0)),
+                                "raw_data": {
+                                    key: (_finite_number(value) if isinstance(value, float) else value)
+                                    for key, value in raw.items()
+                                    if isinstance(value, (str, int, float, bool, type(None)))
+                                },
                             })
             except Exception as exc:
                 warnings.append(f"rosters:week-{week}:{type(exc).__name__}")
@@ -211,7 +226,14 @@ def import_season(
         timeout=90,
     )
     if not response.ok:
-        raise ImportError(f"Supabase import failed with HTTP {response.status_code}.")
+        try:
+            error_code = response.json().get("code", "unknown")
+        except (ValueError, AttributeError):
+            error_code = "unknown"
+        raise ImportError(
+            f"Supabase import failed with HTTP {response.status_code} "
+            f"(database code {error_code})."
+        )
 
     result = response.json()
     if not isinstance(result, dict):
