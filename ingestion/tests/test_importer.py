@@ -82,3 +82,27 @@ def test_history_bundle_normalizes_extended_entities_and_stable_transactions() -
     assert bundle["roster_snapshots"][0]["points"] == 18.5
     assert len(bundle["transactions"]) == 1
     assert bundle["transactions"][0]["items"][0]["bid_amount"] == 7
+
+
+def test_active_season_never_fetches_future_roster_weeks() -> None:
+    requested_weeks = []
+
+    class Request:
+        def get_league_draft(self):
+            return {"draftDetail": {"picks": []}}
+
+    class League:
+        finalScoringPeriod = 17
+        current_week = 2
+        espn_request = Request()
+
+        def box_scores(self, week, player_team_cache):
+            requested_weeks.append(week)
+            return []
+
+        def recent_activity(self, size, offset):
+            return []
+
+    _fetch_history_bundle(League(), 2026)
+
+    assert requested_weeks == [1, 2]
