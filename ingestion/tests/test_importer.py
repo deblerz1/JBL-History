@@ -4,7 +4,12 @@ from types import SimpleNamespace
 import pytest
 
 from jbl_history.config import EspnConfig, SupabaseConfig
-from jbl_history.importer import ImportError, _fetch_history_bundle, import_season
+from jbl_history.importer import (
+    ImportError,
+    _fetch_history_bundle,
+    _finite_number,
+    import_season,
+)
 
 
 ESPN = EspnConfig(1550163, 2017, 2026, "{fixture-id}", "fixture-secret")
@@ -106,3 +111,9 @@ def test_active_season_never_fetches_future_roster_weeks() -> None:
     _fetch_history_bundle(League(), 2026)
 
     assert requested_weeks == [1, 2]
+
+
+def test_live_non_finite_values_are_sanitized_for_postgres_json() -> None:
+    assert _finite_number(float("nan")) is None
+    assert _finite_number(float("inf")) is None
+    assert _finite_number(12.5) == 12.5
