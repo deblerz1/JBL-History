@@ -179,11 +179,11 @@ Changing `JBL_ACCESS_CODE` changes what members use on their next login. Changin
 The protected museum now includes six server-rendered exhibits backed by the
 private analytics contract:
 
-- The full 11-manager career table with championships, regular-season and playoff
+- The full 10-manager career table with championships, regular-season and playoff
   records, win percentages, playoff appearances, and career points
 - A 10-season archive with 86 final standings rows, season-specific team names,
   champions, title-game scores, seeds, and points for/against
-- A 53-pair head-to-head rivalry ledger with wins, ties, meetings, and total points
+- A 45-pair head-to-head rivalry ledger with wins, ties, meetings, and total points
 - A 10-season draft archive with 1,376 actual selections grouped by historical
   team, including round, pick, player, position, keeper, and available bid data
 - Top-ten galleries for the highest and lowest completed weekly scores
@@ -240,6 +240,10 @@ a win, displays the percentage gap, and defaults to the league's most one-sided
 histories. Visitors can filter to one current team identity or reorder the ledger
 by closest rivalry or most meetings without another database request.
 
+Kent's 2017–2018 ESPN identity and Jack V's 2019–present identity are resolved as
+one canonical `Jack V` manager career. Historical season team names remain intact,
+and a private alias mapping reapplies the merge after future ESPN imports.
+
 ### Verified private analytics foundation
 
 Ten `security_invoker` views now provide a stable, read-only contract for the web
@@ -255,7 +259,7 @@ each four-team playoff, and one championship matchup for every completed season.
 All nine champions from 2017–2025 are championship-matchup winners and match the
 season's first-place finisher.
 
-The analytics layer currently resolves 11 career managers, 53 head-to-head rivalry
+The analytics layer currently resolves 10 career managers, 45 head-to-head rivalry
 pairs, 1,376 draft selections, and 1,220 completed team-game performances. Only the
 approved privacy-safe labels are exposed to the server-side dashboard contract;
 full member names remain private. `anon` and `authenticated` have no access; only
