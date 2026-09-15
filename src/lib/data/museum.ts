@@ -1,5 +1,6 @@
 import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { HistorianCorpus } from "@/lib/historian";
 
 export type Champion = { year: number; teamName: string; ownerName: string | null; runnerUpTeamName: string; championScore: number; runnerUpScore: number };
 export type ManagerCareer = { teamName: string; ownerName: string | null; championships: number; winPercentage: number | null; playoffAppearances: number };
@@ -16,6 +17,29 @@ async function identityMap(supabase: ReturnType<typeof createServerSupabaseClien
   const { data, error } = await supabase.from("analytics_member_identities").select("member_id,public_name");
   if (error) throw new Error(`Identity query failed: ${error.message}`);
   return new Map(data.map((row) => [row.member_id, row.public_name]));
+}
+
+export async function getHistorianCorpus():Promise<HistorianCorpus> {
+  const supabase=createServerSupabaseClient();
+  const [managersResult,championsResult,rivalriesResult,recordsResult,seasonsResult,identities]=await Promise.all([
+    supabase.from("analytics_manager_careers").select("member_id,current_team_name,championships,regular_season_wins,regular_season_losses,regular_season_ties,regular_season_win_percentage,playoff_appearances,playoff_wins,playoff_losses,playoff_win_percentage,regular_season_points_for"),
+    supabase.from("analytics_champions").select("year,member_id,team_name,runner_up_team_name,champion_score,runner_up_score"),
+    supabase.from("analytics_head_to_head").select("member_a_id,member_b_id,member_a_team_name,member_b_team_name,games,member_a_wins,member_b_wins,ties"),
+    supabase.from("analytics_league_records").select("record_type,record_rank,year,matchup_period,member_id,team_name,opponent_team_name,record_value").lte("record_rank",10),
+    supabase.from("analytics_season_standings").select("year,member_id,team_name,wins,losses,ties,points_for,final_standing"),identityMap(supabase),
+  ]);
+  if(managersResult.error) throw new Error(`Historian managers query failed: ${managersResult.error.message}`);
+  if(championsResult.error) throw new Error(`Historian champions query failed: ${championsResult.error.message}`);
+  if(rivalriesResult.error) throw new Error(`Historian rivalries query failed: ${rivalriesResult.error.message}`);
+  if(recordsResult.error) throw new Error(`Historian records query failed: ${recordsResult.error.message}`);
+  if(seasonsResult.error) throw new Error(`Historian seasons query failed: ${seasonsResult.error.message}`);
+  return {
+    managers:managersResult.data.map(r=>({memberId:r.member_id,teamName:r.current_team_name,publicName:identities.get(r.member_id)??null,championships:Number(r.championships),wins:Number(r.regular_season_wins),losses:Number(r.regular_season_losses),ties:Number(r.regular_season_ties),winPercentage:r.regular_season_win_percentage===null?null:Number(r.regular_season_win_percentage),playoffAppearances:Number(r.playoff_appearances),playoffWins:Number(r.playoff_wins),playoffLosses:Number(r.playoff_losses),playoffWinPercentage:r.playoff_win_percentage===null?null:Number(r.playoff_win_percentage),pointsFor:Number(r.regular_season_points_for)})),
+    champions:championsResult.data.map(r=>({year:Number(r.year),memberId:r.member_id,teamName:r.team_name,publicName:identities.get(r.member_id)??null,runnerUp:r.runner_up_team_name,score:Number(r.champion_score),runnerUpScore:Number(r.runner_up_score)})),
+    rivalries:rivalriesResult.data.map(r=>({memberAId:r.member_a_id,memberBId:r.member_b_id,memberATeamName:r.member_a_team_name,memberBTeamName:r.member_b_team_name,memberAPublicName:identities.get(r.member_a_id)??null,memberBPublicName:identities.get(r.member_b_id)??null,games:Number(r.games),memberAWins:Number(r.member_a_wins),memberBWins:Number(r.member_b_wins),ties:Number(r.ties)})),
+    records:recordsResult.data.map(r=>({type:r.record_type,rank:Number(r.record_rank),year:Number(r.year),week:Number(r.matchup_period),memberId:r.member_id,teamName:r.team_name,publicName:identities.get(r.member_id)??null,opponent:r.opponent_team_name,value:Number(r.record_value)})),
+    seasons:seasonsResult.data.map(r=>({year:Number(r.year),memberId:r.member_id,teamName:r.team_name,wins:Number(r.wins),losses:Number(r.losses),ties:Number(r.ties),pointsFor:Number(r.points_for),finalStanding:r.final_standing===null?null:Number(r.final_standing)})),
+  };
 }
 
 export async function getMuseumOverview() {
