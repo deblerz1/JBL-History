@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 2 ESPN connectivity complete
+> **Status:** Milestone 3 historical backfill in progress
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
