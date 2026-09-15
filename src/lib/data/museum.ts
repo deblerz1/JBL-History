@@ -10,6 +10,7 @@ export type PlayoffPlayer = { id: string; name: string; position: string | null;
 export type PlayoffWeek = { week: number; homePlayers: PlayoffPlayer[]; awayPlayers: PlayoffPlayer[]; homePoints: number; awayPoints: number };
 export type PlayoffMatchupDetail = PlayoffGame & { year: number; home: PlayoffTeam; away: PlayoffTeam; weeks: PlayoffWeek[]; lineupAvailable: boolean };
 export type Rivalry = { memberAId: string; memberBId: string; memberATeamName: string; memberBTeamName: string; memberAPublicName: string | null; memberBPublicName: string | null; games: number; memberAWins: number; memberBWins: number; ties: number; memberAPoints: number; memberBPoints: number };
+export type SeasonMatchup = { id:string; matchupPeriod:number; scoringPeriods:number[]; playoff:boolean; complete:boolean; home:PlayoffTeam; away:PlayoffTeam };
 
 async function identityMap(supabase: ReturnType<typeof createServerSupabaseClient>) {
   const { data, error } = await supabase.from("analytics_member_identities").select("member_id,public_name");
@@ -48,6 +49,54 @@ export async function getSeasonArchive() {
   if (standings.error) throw new Error(`Season archive query failed: ${standings.error.message}`);
   if (champions.error) throw new Error(`Champions query failed: ${champions.error.message}`);
   return { standings: standings.data.map(row=>({...row,public_name:identities.get(row.member_id)??null})), champions: champions.data.map(row=>({...row,public_name:identities.get(row.member_id)??null})) };
+}
+
+export async function getSeasonMatchups(year:number) {
+  const supabase=createServerSupabaseClient();
+  const {data:season,error:seasonError}=await supabase.from("seasons").select("id,year,status").eq("year",year).maybeSingle();
+  if(seasonError) throw new Error(`Season query failed: ${seasonError.message}`);
+  if(!season) return null;
+  const [gamesResult,teamsResult,settingsResult,identities]=await Promise.all([
+    supabase.from("matchups").select("id,matchup_period,home_team_id,away_team_id,home_score,away_score,winner_team_id,is_playoff,is_complete").eq("season_id",season.id).order("matchup_period"),
+    supabase.from("analytics_season_standings").select("season_team_id,member_id,team_name,playoff_seed").eq("year",year),
+    supabase.from("scoring_settings").select("settings").eq("season_id",season.id).maybeSingle(),identityMap(supabase),
+  ]);
+  if(gamesResult.error) throw new Error(`Season matchups query failed: ${gamesResult.error.message}`);
+  if(teamsResult.error) throw new Error(`Season teams query failed: ${teamsResult.error.message}`);
+  if(settingsResult.error) throw new Error(`Season schedule query failed: ${settingsResult.error.message}`);
+  const teams=new Map(teamsResult.data.map(row=>[row.season_team_id,row]));
+  const settings=settingsResult.data?.settings as {scheduleSettings?:{matchupPeriods?:Record<string,number[]>}}|undefined;
+  const games:SeasonMatchup[]=gamesResult.data.flatMap(game=>{
+    const home=teams.get(game.home_team_id); const away=teams.get(game.away_team_id); if(!home||!away) return [];
+    const scoringPeriods=(settings?.scheduleSettings?.matchupPeriods?.[String(game.matchup_period)]??[Number(game.matchup_period)]).map(Number);
+    return [{id:game.id,matchupPeriod:Number(game.matchup_period),scoringPeriods,playoff:Boolean(game.is_playoff),complete:Boolean(game.is_complete),
+      home:{id:home.season_team_id,seed:home.playoff_seed,teamName:home.team_name,ownerName:identities.get(home.member_id)??null,score:Number(game.home_score),winner:game.winner_team_id===game.home_team_id},
+      away:{id:away.season_team_id,seed:away.playoff_seed,teamName:away.team_name,ownerName:identities.get(away.member_id)??null,score:Number(game.away_score),winner:game.winner_team_id===game.away_team_id}}];
+  });
+  return {year:Number(season.year),status:season.status,games};
+}
+
+export async function getManagerProfile(memberId:string) {
+  const supabase=createServerSupabaseClient();
+  const [careerResult,seasonsResult,championsResult,gamesResult,rivalries,identities]=await Promise.all([
+    supabase.from("analytics_manager_careers").select("*").eq("member_id",memberId).maybeSingle(),
+    supabase.from("analytics_season_standings").select("year,status,team_name,wins,losses,ties,points_for,points_against,final_standing,playoff_seed").eq("member_id",memberId).order("year",{ascending:false}),
+    supabase.from("analytics_champions").select("year,team_name,runner_up_team_name,champion_score,runner_up_score").eq("member_id",memberId).order("year",{ascending:false}),
+    supabase.from("analytics_game_performances").select("year,matchup_period,team_name,opponent_team_name,points,opponent_points,scoring_period_count").eq("member_id",memberId).eq("scoring_period_count",1).order("points",{ascending:false}),
+    getRivalries(),identityMap(supabase),
+  ]);
+  if(careerResult.error) throw new Error(`Manager career query failed: ${careerResult.error.message}`);
+  if(seasonsResult.error) throw new Error(`Manager seasons query failed: ${seasonsResult.error.message}`);
+  if(championsResult.error) throw new Error(`Manager titles query failed: ${championsResult.error.message}`);
+  if(gamesResult.error) throw new Error(`Manager games query failed: ${gamesResult.error.message}`);
+  if(!careerResult.data) return null;
+  const relevant=rivalries.filter(r=>r.memberAId===memberId||r.memberBId===memberId).map(r=>({
+    opponentId:r.memberAId===memberId?r.memberBId:r.memberAId,
+    opponentTeamName:r.memberAId===memberId?r.memberBTeamName:r.memberATeamName,
+    opponentName:r.memberAId===memberId?r.memberBPublicName:r.memberAPublicName,
+    games:r.games,wins:r.memberAId===memberId?r.memberAWins:r.memberBWins,losses:r.memberAId===memberId?r.memberBWins:r.memberAWins,ties:r.ties,
+  })).sort((a,b)=>b.games-a.games);
+  return {career:{...careerResult.data,public_name:identities.get(memberId)??null},seasons:seasonsResult.data,championships:championsResult.data,rivalries:relevant,bestGame:gamesResult.data[0]??null,worstGame:[...gamesResult.data].sort((a,b)=>Number(a.points)-Number(b.points))[0]??null};
 }
 
 export async function getRivalries(): Promise<Rivalry[]> {
@@ -102,11 +151,16 @@ export async function getPlayoffArchive(): Promise<PlayoffSeason[]> {
   }));
 }
 
-export async function getPlayoffMatchup(matchupId:string): Promise<PlayoffMatchupDetail|null> {
+export async function getMatchupDetail(matchupId:string): Promise<PlayoffMatchupDetail|null> {
   const supabase=createServerSupabaseClient();
-  const {data:game,error:gameError}=await supabase.from("analytics_playoff_games").select("season_id,year,matchup_id,matchup_period,playoff_round,playoff_round_count,home_team_id,away_team_id,home_score,away_score,winner_team_id").eq("matchup_id",matchupId).maybeSingle();
-  if(gameError) throw new Error(`Playoff matchup query failed: ${gameError.message}`);
-  if(!game) return null;
+  const {data:rawGame,error:gameError}=await supabase.from("matchups").select("id,season_id,matchup_period,home_team_id,away_team_id,home_score,away_score,winner_team_id,is_playoff").eq("id",matchupId).maybeSingle();
+  if(gameError) throw new Error(`Matchup query failed: ${gameError.message}`);
+  if(!rawGame) return null;
+  const {data:season,error:seasonError}=await supabase.from("seasons").select("year").eq("id",rawGame.season_id).maybeSingle();
+  if(seasonError) throw new Error(`Matchup season query failed: ${seasonError.message}`);
+  const playoff=rawGame.is_playoff?await supabase.from("analytics_playoff_games").select("playoff_round,playoff_round_count").eq("matchup_id",matchupId).maybeSingle():null;
+  if(playoff?.error) throw new Error(`Playoff round query failed: ${playoff.error.message}`);
+  const game={...rawGame,matchup_id:rawGame.id,year:Number(season?.year),playoff_round:Number(playoff?.data?.playoff_round??0),playoff_round_count:Number(playoff?.data?.playoff_round_count??0)};
 
   const [standingsResult,settingsResult,identities]=await Promise.all([
     supabase.from("analytics_season_standings").select("season_team_id,member_id,team_name,playoff_seed").in("season_team_id",[game.home_team_id,game.away_team_id]),
@@ -139,3 +193,5 @@ export async function getPlayoffMatchup(matchupId:string): Promise<PlayoffMatchu
   const away:PlayoffTeam={id:awayRow.season_team_id,seed:awayRow.playoff_seed,teamName:awayRow.team_name,ownerName:identities.get(awayRow.member_id)??null,score:Number(game.away_score),winner:game.winner_team_id===game.away_team_id};
   return {id:game.matchup_id,year:Number(game.year),round:Number(game.playoff_round),roundCount:Number(game.playoff_round_count),matchupPeriod:Number(game.matchup_period),scoringPeriods,home,away,weeks,lineupAvailable:rosters.length>0};
 }
+
+export const getPlayoffMatchup=getMatchupDetail;

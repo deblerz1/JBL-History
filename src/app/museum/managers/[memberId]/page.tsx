@@ -1,0 +1,16 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getManagerProfile } from "@/lib/data/museum";
+
+export const dynamic="force-dynamic";
+const pct=(value:unknown)=>value===null||value===undefined?"—":`${(Number(value)*100).toFixed(1)}%`;
+export default async function ManagerProfilePage({params}:{params:Promise<{memberId:string}>}) {
+  const {memberId}=await params; const profile=await getManagerProfile(memberId); if(!profile) notFound();
+  const {career,seasons,championships,rivalries,bestGame,worstGame}=profile; const topRival=rivalries[0];
+  const nemesis=[...rivalries].filter(r=>r.losses>r.wins).sort((a,b)=>(b.losses-b.wins)-(a.losses-a.wins))[0];
+  return <main className="exhibit-page manager-profile"><header className="profile-hero"><Link href="/museum/managers">← Manager rankings</Link><p className="eyebrow">Career exhibit</p><h1>{career.current_team_name}</h1><p>{career.public_name}</p><div className="profile-stat-grid"><article><strong>{career.championships}</strong><span>Championships</span></article><article><strong>{career.regular_season_wins}-{career.regular_season_losses}</strong><span>Career record</span></article><article><strong>{pct(career.regular_season_win_percentage)}</strong><span>Win percentage</span></article><article><strong>{career.playoff_appearances}</strong><span>Playoff appearances</span></article></div></header>
+    <section className="profile-highlights"><article><p className="eyebrow">Championship seasons</p><strong>{championships.length?championships.map(c=>c.year).join(" · "):"Still hunting"}</strong></article><article><p className="eyebrow">Most-played rival</p><strong>{topRival?.opponentTeamName??"—"}</strong><small>{topRival?`${topRival.wins}-${topRival.losses}${topRival.ties?`-${topRival.ties}`:""} across ${topRival.games} games`:"No games"}</small></article><article><p className="eyebrow">Nemesis</p><strong>{nemesis?.opponentTeamName??"Nobody yet"}</strong><small>{nemesis?`${nemesis.wins}-${nemesis.losses} head-to-head`:"No losing rivalry"}</small></article></section>
+    <section className="profile-games"><h2>Single-week extremes</h2><div><article><span>Highest</span><strong>{bestGame?Number(bestGame.points).toFixed(2):"—"}</strong><small>{bestGame?`${bestGame.year}, Week ${bestGame.matchup_period} vs. ${bestGame.opponent_team_name}`:"Unavailable"}</small></article><article><span>Lowest</span><strong>{worstGame?Number(worstGame.points).toFixed(2):"—"}</strong><small>{worstGame?`${worstGame.year}, Week ${worstGame.matchup_period} vs. ${worstGame.opponent_team_name}`:"Unavailable"}</small></article></div></section>
+    <section><h2 className="profile-section-title">Season-by-season</h2><div className="data-table-wrap"><table className="data-table"><thead><tr><th>Year</th><th>Team</th><th>Finish</th><th>Record</th><th>PF</th><th>PA</th><th>Seed</th></tr></thead><tbody>{seasons.map(s=><tr key={s.year}><td><Link href={`/museum/seasons/${s.year}`}><strong>{s.year}</strong></Link></td><td><strong>{s.team_name}</strong></td><td>{s.final_standing??"—"}</td><td>{s.wins}-{s.losses}{s.ties?`-${s.ties}`:""}</td><td>{Number(s.points_for).toFixed(1)}</td><td>{Number(s.points_against).toFixed(1)}</td><td>{s.playoff_seed??"—"}</td></tr>)}</tbody></table></div></section>
+  </main>;
+}
