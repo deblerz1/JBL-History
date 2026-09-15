@@ -73,6 +73,49 @@ button,input { font:inherit; } a { color:inherit; text-decoration:none; }
 .collection-grid p { min-height:58px; color:#858d84; font-size:.8rem; line-height:1.55; }
 .museum-footer { display:flex; width:min(1400px,100%); margin:auto; justify-content:space-between; padding:35px 0 45px; border-top:1px solid var(--line); color:#656d66; font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; }
 .museum-loading { display:grid; place-content:center; gap:20px; text-align:center; color:#8e958b; } .loading-mark { width:80px; height:80px; margin:auto; border-radius:50%; }
-@media (max-width:900px) { .entry-hero,.museum-grid { grid-template-columns:1fr; } .entry-copy { text-align:center; } .entry-deck { margin-left:auto; margin-right:auto; } .entry-hero { padding:60px 0; } .access-card { width:min(500px,100%); margin:auto; } .museum-nav nav { display:none; } .collection-grid { grid-template-columns:repeat(2,1fr); } }
-@media (max-width:560px) { .public-entry { padding-top:24px; } .entry-header { justify-content:center; } .entry-copy h1 { font-size:3.35rem; } .entry-footer { gap:9px; flex-wrap:wrap; } .entry-footer i { display:none; } .museum-nav { min-height:75px; } .nav-brand small { display:none; } .quiet-button { padding:8px; font-size:.58rem; } .museum-intro { text-align:left; padding:70px 0 50px; } .museum-intro h1 { font-size:3.4rem; } .section-heading { align-items:start; flex-direction:column; gap:8px; } .champion-gallery,.museum-grid,.collections { padding:45px 0; } .champion-track { margin-right:-18px; } .manager-list li { grid-template-columns:35px minmax(0,1fr) 55px; } .manager-stat:last-child { display:none; } .collection-grid { grid-template-columns:1fr; } .collection-grid article { min-height:210px; } .museum-footer { flex-direction:column; gap:9px; } }
+.exhibit-page { width:min(1400px,100%); margin:auto; padding-bottom:70px; }
+.exhibit-header { max-width:900px; padding:clamp(60px,8vw,110px) 0 55px; }
+.exhibit-header>a { display:inline-block; margin-bottom:48px; color:#7f877e; font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; }
+.exhibit-header>a:hover { color:var(--gold-light); }
+.exhibit-header h1 { margin:0; font-family:Georgia,serif; font-size:clamp(3.2rem,7vw,6.5rem); font-weight:400; letter-spacing:-.05em; line-height:.92; }
+.exhibit-header>p:last-child { max-width:700px; margin:25px 0 0; color:var(--muted); line-height:1.7; }
+.data-table-wrap { overflow-x:auto; border:1px solid rgba(255,255,255,.09); }
+.data-table { width:100%; min-width:780px; border-collapse:collapse; font-size:.78rem; }
+.data-table th { padding:15px 18px; background:rgba(201,160,75,.09); color:#8e958b; font-size:.6rem; letter-spacing:.12em; text-align:left; text-transform:uppercase; }
+.data-table td { padding:17px 18px; border-top:1px solid rgba(255,255,255,.07); color:#afb4aa; }
+.data-table td strong { color:var(--ink); font-family:Georgia,serif; font-size:.98rem; font-weight:400; }
+.rank-cell,.gold-cell { color:var(--gold-light)!important; font-family:Georgia,serif; font-size:1rem; }
+.season-stack { display:grid; gap:12px; }
+.season-card { border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.02); }
+.season-card summary { display:grid; grid-template-columns:1fr 1fr 25px; align-items:center; gap:20px; padding:24px 28px; cursor:pointer; list-style:none; }
+.season-card summary::-webkit-details-marker { display:none; }
+.season-card summary>span:first-child { display:flex; align-items:baseline; gap:15px; }
+.season-card summary strong { color:var(--gold-light); font-family:Georgia,serif; font-size:1.8rem; }
+.season-card summary small,.season-card summary>span:nth-child(2) { color:#7d857d; font-size:.65rem; letter-spacing:.1em; text-transform:uppercase; }
+.season-card summary i { color:var(--gold); font-size:1.4rem; font-style:normal; transition:transform .2s; }
+.season-card[open] summary i { transform:rotate(45deg); }
+.season-body { padding:0 28px 28px; }
+.season-champion { display:flex; gap:18px; align-items:baseline; margin-bottom:18px; padding:16px 18px; border-left:2px solid var(--gold); background:rgba(201,160,75,.06); }
+.season-champion span { color:#858d83; font-size:.6rem; letter-spacing:.13em; text-transform:uppercase; }
+.season-champion strong { font-family:Georgia,serif; font-size:1.25rem; font-weight:400; }
+.season-champion small { color:#858d83; }
+.rivalry-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.rivalry-card { position:relative; display:grid; grid-template-columns:1fr 35px 1fr; align-items:center; min-height:190px; padding:48px 26px 25px; border:1px solid rgba(255,255,255,.09); background:rgba(255,255,255,.02); text-align:center; }
+.meeting-count { position:absolute; top:17px; left:20px; color:#737b73; font-size:.58rem; letter-spacing:.12em; text-transform:uppercase; }
+.rival { display:grid; gap:8px; } .rival strong { font-family:Georgia,serif; font-size:1.15rem; font-weight:400; }
+.rival b { color:#91978f; font-family:Georgia,serif; font-size:2.4rem; font-weight:400; } .rival.leader b { color:var(--gold-light); }
+.rival small { color:#6e766f; font-size:.62rem; } .rivalry-card>i { color:#596159; font-size:.6rem; font-style:normal; }
+.rivalry-card>p { position:absolute; right:18px; bottom:8px; color:#6e766f; font-size:.6rem; }
+.record-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.record-panel { padding:32px; border:1px solid rgba(255,255,255,.09); background:rgba(255,255,255,.02); }
+.record-panel h2 { margin:0 0 25px; font-family:Georgia,serif; font-size:2rem; font-weight:400; }
+.record-panel ol { margin:0; padding:0; list-style:none; }
+.record-panel li { display:grid; grid-template-columns:28px minmax(0,1fr) 70px; align-items:center; gap:12px; min-height:64px; border-top:1px solid rgba(255,255,255,.07); }
+.record-panel li>span { color:#697169; font-family:Georgia,serif; } .record-panel li div { display:grid; gap:4px; }
+.record-panel li strong { font-family:Georgia,serif; font-weight:400; } .record-panel li small { overflow:hidden; color:#6e766f; font-size:.6rem; text-overflow:ellipsis; white-space:nowrap; }
+.record-panel li>b { color:var(--gold-light); font-family:var(--font-geist-mono),monospace; font-size:.8rem; text-align:right; }
+.collection-grid>a { display:block; } .collection-grid>a article { height:100%; transition:border-color .2s,background .2s; }
+.collection-grid>a:hover article { border-color:var(--gold-light); background:rgba(201,160,75,.06); }
+@media (max-width:900px) { .entry-hero,.museum-grid { grid-template-columns:1fr; } .entry-copy { text-align:center; } .entry-deck { margin-left:auto; margin-right:auto; } .entry-hero { padding:60px 0; } .access-card { width:min(500px,100%); margin:auto; } .museum-nav nav { display:none; } .collection-grid { grid-template-columns:repeat(2,1fr); } .rivalry-grid,.record-columns { grid-template-columns:1fr; } }
+@media (max-width:560px) { .public-entry { padding-top:24px; } .entry-header { justify-content:center; } .entry-copy h1 { font-size:3.35rem; } .entry-footer { gap:9px; flex-wrap:wrap; } .entry-footer i { display:none; } .museum-nav { min-height:75px; } .nav-brand small { display:none; } .quiet-button { padding:8px; font-size:.58rem; } .museum-intro { text-align:left; padding:70px 0 50px; } .museum-intro h1 { font-size:3.4rem; } .section-heading { align-items:start; flex-direction:column; gap:8px; } .champion-gallery,.museum-grid,.collections { padding:45px 0; } .champion-track { margin-right:-18px; } .manager-list li { grid-template-columns:35px minmax(0,1fr) 55px; } .manager-stat:last-child { display:none; } .collection-grid { grid-template-columns:1fr; } .collection-grid article { min-height:210px; } .museum-footer { flex-direction:column; gap:9px; } .exhibit-header { padding:55px 0 38px; } .exhibit-header>a { margin-bottom:35px; } .season-card summary { grid-template-columns:1fr auto 20px; padding:20px 16px; } .season-card summary>span:nth-child(2) { max-width:130px; text-align:right; } .season-body { padding:0 12px 16px; } .season-champion { align-items:start; flex-direction:column; gap:5px; } .rivalry-card { padding-left:14px; padding-right:14px; } .record-panel { padding:24px 18px; } }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
