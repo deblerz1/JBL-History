@@ -12,6 +12,7 @@ on:
           - validation
           - full-history
           - import-2025
+          - import-2026
           - backfill-2017-2026
 
 permissions:
@@ -58,7 +59,7 @@ jobs:
         run: python -m pip install .
 
       - name: Verify JBL Supabase secret is configured
-        if: inputs.scope == 'import-2025' || inputs.scope == 'backfill-2017-2026'
+        if: inputs.scope == 'import-2025' || inputs.scope == 'import-2026' || inputs.scope == 'backfill-2017-2026'
         shell: bash
         run: |
           set +x
@@ -103,6 +104,10 @@ jobs:
         if: inputs.scope == 'backfill-2017-2026'
         run: python -m jbl_history.cli backfill --output reports/backfill.json
 
+      - name: Import active 2026 season
+        if: inputs.scope == 'import-2026'
+        run: python -m jbl_history.cli import-season --year 2026 --output reports/import-2026.json
+
       - name: Publish sanitized job summary
         if: always()
         run: |
@@ -127,6 +132,19 @@ jobs:
                   f"- Weekly roster rows: `{result['roster_snapshots']}`\n"
                   f"- Transactions: `{result['transactions']}`\n"
                   "- Idempotency: `passed`\n"
+              )
+              raise SystemExit(0)
+
+          active_path = Path("reports/import-2026.json")
+          if active_path.exists():
+              result = json.loads(active_path.read_text())
+              summary.write_text(
+                  "## 2026 JBL refresh\n\n"
+                  f"- Teams: `{result['teams']}`\n"
+                  f"- Matchups: `{result['matchups']}`\n"
+                  f"- Draft picks: `{result['draft_picks']}`\n"
+                  f"- Weekly roster rows: `{result['roster_snapshots']}`\n"
+                  f"- Warnings: `{result['warnings']}`\n"
               )
               raise SystemExit(0)
 
