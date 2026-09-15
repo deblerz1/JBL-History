@@ -28,6 +28,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     import_parser.add_argument("--year", type=int, required=True)
     import_parser.add_argument("--output", type=Path)
+    backfill = subparsers.add_parser(
+        "backfill", help="Import the configured JBL season range independently"
+    )
+    backfill.add_argument("--output", type=Path, default=Path("reports/backfill.json"))
     return parser
 
 
@@ -39,20 +43,35 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
 
-    if args.command == "import-season":
-        try:
-            result = import_season(
-                config, SupabaseConfig.from_environment(), year=args.year
-            )
-        except (ConfigurationError, SeasonImportError) as exc:
-            print(f"Import failed: {exc}", file=sys.stderr)
-            return 1
+    if args.command in {"import-season", "backfill"}:
+        years = [args.year] if args.command == "import-season" else list(
+            range(config.start_year, config.end_year + 1)
+        )
+        results = []
+        failures = []
+        for year in years:
+            try:
+                results.append(import_season(
+                    config, SupabaseConfig.from_environment(), year=year
+                ))
+            except (ConfigurationError, SeasonImportError) as exc:
+                if args.command == "import-season":
+                    print(f"Import failed: {exc}", file=sys.stderr)
+                    return 1
+                failures.append({"season": year, "error": type(exc).__name__})
+        result = results[0] if args.command == "import-season" else {
+            "league_id": config.league_id,
+            "requested_seasons": years,
+            "succeeded_seasons": [item["season"] for item in results],
+            "failed_seasons": failures,
+            "results": results,
+        }
         rendered = json.dumps(result, sort_keys=True)
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(rendered + "\n", encoding="utf-8")
         print(rendered)
-        return 0
+        return 0 if not failures else 1
 
     years = (
         [args.year]
