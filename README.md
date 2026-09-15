@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 4A private analytics foundation complete
+> **Status:** Milestone 4B private museum shell complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -142,10 +142,36 @@ remains active for future refreshes.
 ### 4. Dashboard
 
 - [x] Build the private analytics contract for the dashboard
-- [ ] Add a shared league access gate
-- [ ] Build the trophy-room museum shell and champions timeline
+- [x] Add a shared league access gate
+- [x] Build the trophy-room museum shell and champions timeline
 - [ ] Add all-time manager, season, rivalry, draft, and records pages
 - [ ] Add the read-only league historian chatbot
+
+### Private museum access
+
+The dashboard now has a public, no-index landing page and a protected `/museum`
+route. Members and invited guests enter one shared league access code. A successful
+entry creates a signed, HTTP-only, same-site session cookie that expires after 30
+days; the shared code itself is never stored in the browser. The museum reads the
+private analytics views with a new Supabase secret key created only inside each
+server request. Neither that key nor the underlying private data is included in
+client-side JavaScript.
+
+The first responsive trophy-room shell includes the full champions timeline, a
+five-manager leaderboard preview, collection entrances for seasons, rivalries,
+drafts, and records, and a placeholder for the league historian. Original team
+names appear only after the access gate and never in page metadata or URLs.
+
+Configure these additional server-only deployment variables before opening the
+museum:
+
+```dotenv
+JBL_ACCESS_CODE=choose-a-long-shared-league-code
+JBL_SESSION_SECRET=generate-a-different-random-32-byte-or-longer-value
+```
+
+Changing `JBL_ACCESS_CODE` changes what members use on their next login. Changing
+`JBL_SESSION_SECRET` immediately invalidates every existing museum session.
 
 ### Verified private analytics foundation
 
