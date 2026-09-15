@@ -6,6 +6,9 @@ export type ManagerCareer = { teamName: string; ownerName: string | null; champi
 export type PlayoffTeam = { id: string; seed: number | null; teamName: string; ownerName: string | null; score: number; winner: boolean };
 export type PlayoffGame = { id: string; round: number; roundCount: number; matchupPeriod: number; scoringPeriods: number[]; home: PlayoffTeam; away: PlayoffTeam };
 export type PlayoffSeason = { year: number; status: string; playoffTeamCount: number; games: PlayoffGame[] };
+export type PlayoffPlayer = { id: string; name: string; position: string | null; proTeam: string | null; slot: string | null; points: number; projectedPoints: number | null; reserve: boolean };
+export type PlayoffWeek = { week: number; homePlayers: PlayoffPlayer[]; awayPlayers: PlayoffPlayer[]; homePoints: number; awayPoints: number };
+export type PlayoffMatchupDetail = PlayoffGame & { year: number; home: PlayoffTeam; away: PlayoffTeam; weeks: PlayoffWeek[]; lineupAvailable: boolean };
 
 async function identityMap(supabase: ReturnType<typeof createServerSupabaseClient>) {
   const { data, error } = await supabase.from("analytics_member_identities").select("member_id,public_name");
@@ -96,4 +99,42 @@ export async function getPlayoffArchive(): Promise<PlayoffSeason[]> {
         away:{id:away.season_team_id,seed:away.playoff_seed,teamName:away.team_name,ownerName:identities.get(away.member_id)??null,score:Number(game.away_score),winner:game.winner_team_id===game.away_team_id}};
     }),
   }));
+}
+
+export async function getPlayoffMatchup(matchupId:string): Promise<PlayoffMatchupDetail|null> {
+  const supabase=createServerSupabaseClient();
+  const {data:game,error:gameError}=await supabase.from("analytics_playoff_games").select("season_id,year,matchup_id,matchup_period,playoff_round,playoff_round_count,home_team_id,away_team_id,home_score,away_score,winner_team_id").eq("matchup_id",matchupId).maybeSingle();
+  if(gameError) throw new Error(`Playoff matchup query failed: ${gameError.message}`);
+  if(!game) return null;
+
+  const [standingsResult,settingsResult,identities]=await Promise.all([
+    supabase.from("analytics_season_standings").select("season_team_id,member_id,team_name,playoff_seed").in("season_team_id",[game.home_team_id,game.away_team_id]),
+    supabase.from("scoring_settings").select("settings").eq("season_id",game.season_id).maybeSingle(),
+    identityMap(supabase),
+  ]);
+  if(standingsResult.error) throw new Error(`Playoff matchup teams query failed: ${standingsResult.error.message}`);
+  if(settingsResult.error) throw new Error(`Playoff matchup schedule query failed: ${settingsResult.error.message}`);
+  const homeRow=standingsResult.data.find(row=>row.season_team_id===game.home_team_id);
+  const awayRow=standingsResult.data.find(row=>row.season_team_id===game.away_team_id);
+  if(!homeRow||!awayRow) return null;
+
+  const settings=settingsResult.data?.settings as {scheduleSettings?:{matchupPeriods?:Record<string,number[]>}}|undefined;
+  const scoringPeriods=(settings?.scheduleSettings?.matchupPeriods?.[String(game.matchup_period)]??[Number(game.matchup_period)]).map(Number);
+  const {data:rosters,error:rosterError}=await supabase.from("roster_snapshots").select("player_id,season_team_id,matchup_period,lineup_slot,points,projected_points").in("matchup_period",scoringPeriods).in("season_team_id",[game.home_team_id,game.away_team_id]);
+  if(rosterError) throw new Error(`Playoff lineup query failed: ${rosterError.message}`);
+  const playerIds=[...new Set(rosters.map(row=>row.player_id))];
+  const playersResult=playerIds.length?await supabase.from("players").select("id,full_name,default_position,pro_team").in("id",playerIds):{data:[],error:null};
+  if(playersResult.error) throw new Error(`Playoff players query failed: ${playersResult.error.message}`);
+  const players=new Map(playersResult.data.map(player=>[player.id,player]));
+  const slotOrder=new Map(["QB","RB","WR","TE","RB/WR","RB/WR/TE","OP","D/ST","K","BE","IR"].map((slot,index)=>[slot,index]));
+  const buildPlayers=(week:number,teamId:string):PlayoffPlayer[]=>rosters.filter(row=>row.matchup_period===week&&row.season_team_id===teamId).map(row=>{
+    const player=players.get(row.player_id); const slot=row.lineup_slot; return {id:row.player_id,name:player?.full_name??"Player unavailable",position:player?.default_position??null,proTeam:player?.pro_team??null,slot,points:Number(row.points),projectedPoints:row.projected_points===null?null:Number(row.projected_points),reserve:slot==="BE"||slot==="IR"};
+  }).sort((a,b)=>(slotOrder.get(a.slot??"")??99)-(slotOrder.get(b.slot??"")??99));
+  const weeks=scoringPeriods.map(week=>{
+    const homePlayers=buildPlayers(week,game.home_team_id); const awayPlayers=buildPlayers(week,game.away_team_id);
+    return {week,homePlayers,awayPlayers,homePoints:homePlayers.filter(player=>!player.reserve).reduce((sum,player)=>sum+player.points,0),awayPoints:awayPlayers.filter(player=>!player.reserve).reduce((sum,player)=>sum+player.points,0)};
+  });
+  const home:PlayoffTeam={id:homeRow.season_team_id,seed:homeRow.playoff_seed,teamName:homeRow.team_name,ownerName:identities.get(homeRow.member_id)??null,score:Number(game.home_score),winner:game.winner_team_id===game.home_team_id};
+  const away:PlayoffTeam={id:awayRow.season_team_id,seed:awayRow.playoff_seed,teamName:awayRow.team_name,ownerName:identities.get(awayRow.member_id)??null,score:Number(game.away_score),winner:game.winner_team_id===game.away_team_id};
+  return {id:game.matchup_id,year:Number(game.year),round:Number(game.playoff_round),roundCount:Number(game.playoff_round_count),matchupPeriod:Number(game.matchup_period),scoringPeriods,home,away,weeks,lineupAvailable:rosters.length>0};
 }

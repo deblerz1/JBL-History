@@ -1,0 +1,18 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getPlayoffMatchup,type PlayoffPlayer } from "@/lib/data/museum";
+import { playoffRoundName,scoringPeriodLabel } from "@/lib/playoffs";
+
+export const dynamic="force-dynamic";
+
+function Lineup({players}:{players:PlayoffPlayer[]}) {
+  return <div className="lineup-list">{players.map(player=><div className={player.reserve?"lineup-player reserve":"lineup-player"} key={player.id}><span>{player.slot??"—"}</span><div><strong>{player.name}</strong><small>{player.position??"—"}{player.proTeam?` · ${player.proTeam}`:""}{player.reserve?" · Reserve":""}</small></div><b>{player.points.toFixed(2)}</b></div>)}</div>;
+}
+
+export default async function PlayoffMatchupPage({params}:{params:Promise<{matchupId:string}>}) {
+  const {matchupId}=await params; const matchup=await getPlayoffMatchup(matchupId);
+  if(!matchup) notFound();
+  return <main className="exhibit-page matchup-detail"><header className="matchup-detail-header"><Link href="/museum/playoffs">← Playoff museum</Link><p className="eyebrow">{matchup.year} · {playoffRoundName(matchup.round,matchup.roundCount)} · {scoringPeriodLabel(matchup.scoringPeriods)}</p><h1>{matchup.home.teamName}<span>vs.</span>{matchup.away.teamName}</h1><div className="matchup-scoreboard"><div className={matchup.home.winner?"winner":""}><span>#{matchup.home.seed} · {matchup.home.ownerName}</span><strong>{matchup.home.score.toFixed(2)}</strong></div><i>Final</i><div className={matchup.away.winner?"winner":""}><span>#{matchup.away.seed} · {matchup.away.ownerName}</span><strong>{matchup.away.score.toFixed(2)}</strong></div></div></header>
+    {!matchup.lineupAvailable?<section className="lineup-unavailable"><h2>Final score preserved</h2><p>ESPN did not make player-level historical lineups available for this season. The official matchup result and championship path remain intact.</p></section>:<div className="matchup-weeks">{matchup.weeks.map(week=><section className="matchup-week" key={week.week}><header><div><p className="eyebrow">Scoring period</p><h2>Week {week.week}</h2></div><span>{week.homePoints.toFixed(2)}–{week.awayPoints.toFixed(2)}</span></header><div className="lineup-columns"><section><h3>{matchup.home.teamName}</h3><small>{matchup.home.ownerName}</small><Lineup players={week.homePlayers}/></section><section><h3>{matchup.away.teamName}</h3><small>{matchup.away.ownerName}</small><Lineup players={week.awayPlayers}/></section></div></section>)}</div>}
+  </main>;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { PlayoffSeason,PlayoffTeam } from "@/lib/data/museum";
 import { playoffRoundName,scoringPeriodLabel } from "@/lib/playoffs";
 
@@ -27,7 +28,7 @@ export function PlayoffBracket({seasons}:{seasons:PlayoffSeason[]}) {
     {season.games.length===0?<div className="playoff-empty"><span>{season.year}</span><h2>The bracket awaits.</h2><p>The {season.year} playoffs have not started. This room will fill automatically after ESPN records completed postseason matchups.</p></div>:<>
       <div className="bracket-shell"><div className="bracket">{Array.from({length:roundCount},(_,index)=>index+1).map(round=>{
         const games=season.games.filter(game=>game.round===round);
-        return <section className="bracket-round" key={round}><header className="round-heading"><span>{playoffRoundName(round,roundCount)}</span><small>{games.length} matchup{games.length===1?"":"s"}</small></header><div className="round-games">{games.map(game=><article className={game.round===roundCount?"playoff-game championship-game":"playoff-game"} key={game.id}><div className="game-meta"><span>{scoringPeriodLabel(game.scoringPeriods)}</span><span>{game.scoringPeriods.length>1?"Two-week aggregate":"Final"}</span></div><TeamRow team={game.home}/><TeamRow team={game.away}/></article>)}</div></section>;
+        return <section className="bracket-round" key={round}><header className="round-heading"><span>{playoffRoundName(round,roundCount)}</span><small>{games.length} matchup{games.length===1?"":"s"}</small></header><div className="round-games">{games.map(game=><Link aria-label={`View ${game.home.teamName} versus ${game.away.teamName}`} className="playoff-game-link" href={`/museum/playoffs/${game.id}`} key={game.id}><article className={game.round===roundCount?"playoff-game championship-game":"playoff-game"}><div className="game-meta"><span>{scoringPeriodLabel(game.scoringPeriods)}</span><span>View matchup →</span></div><TeamRow team={game.home}/><TeamRow team={game.away}/></article></Link>)}</div></section>;
       })}</div></div>
       <p className="bracket-note">Seeds are shown in circles. Gold marks the winner. {season.playoffTeamCount===6?"The top two seeds received first-round byes. ":""}Multi-week playoff series are labeled and display ESPN&apos;s combined final score.</p>
     </>}

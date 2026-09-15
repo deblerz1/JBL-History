@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 4D playoff museum complete
+> **Status:** Milestones 4D.1–4D.2 matchup details and records correction complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -221,6 +221,15 @@ Ordinary playoff games show their individual week, while the two-week series use
 in 2023 and 2024 are labeled as aggregates and show the correct week range. The
 layout retains an ESPN-style left-to-right bracket on larger screens and a
 horizontal, touch-friendly bracket on phones.
+
+Every bracket card now opens a private matchup detail page. Seasons 2019 onward
+show each scoring week's starters, reserves, player points, and calculated team
+total; two-week series receive separate weekly panels. ESPN did not expose saved
+lineups for 2017–2018, so those games retain a deliberate final-score-only view.
+
+Weekly record galleries now include only matchup periods containing exactly one
+NFL scoring week. Combined playoff totals remain preserved in the bracket and
+matchup exhibits but no longer compete against genuine single-week performances.
 
 Authentication is enforced by the shared `/museum` layout, so every current and
 future exhibit inherits the same signed-cookie access check. All data fetching
