@@ -9,6 +9,7 @@ export type PlayoffSeason = { year: number; status: string; playoffTeamCount: nu
 export type PlayoffPlayer = { id: string; name: string; position: string | null; proTeam: string | null; slot: string | null; points: number; projectedPoints: number | null; reserve: boolean };
 export type PlayoffWeek = { week: number; homePlayers: PlayoffPlayer[]; awayPlayers: PlayoffPlayer[]; homePoints: number; awayPoints: number };
 export type PlayoffMatchupDetail = PlayoffGame & { year: number; home: PlayoffTeam; away: PlayoffTeam; weeks: PlayoffWeek[]; lineupAvailable: boolean };
+export type Rivalry = { memberAId: string; memberBId: string; memberATeamName: string; memberBTeamName: string; memberAPublicName: string | null; memberBPublicName: string | null; games: number; memberAWins: number; memberBWins: number; ties: number; memberAPoints: number; memberBPoints: number };
 
 async function identityMap(supabase: ReturnType<typeof createServerSupabaseClient>) {
   const { data, error } = await supabase.from("analytics_member_identities").select("member_id,public_name");
@@ -49,10 +50,10 @@ export async function getSeasonArchive() {
   return { standings: standings.data.map(row=>({...row,public_name:identities.get(row.member_id)??null})), champions: champions.data.map(row=>({...row,public_name:identities.get(row.member_id)??null})) };
 }
 
-export async function getRivalries() {
+export async function getRivalries(): Promise<Rivalry[]> {
   const supabase=createServerSupabaseClient(); const [{data,error},identities]=await Promise.all([supabase.from("analytics_head_to_head").select("member_a_id,member_b_id,member_a_team_name,member_b_team_name,games,member_a_wins,member_b_wins,ties,member_a_points,member_b_points").order("games", { ascending:false }),identityMap(supabase)]);
   if (error) throw new Error(`Rivalries query failed: ${error.message}`);
-  return data.map(row=>({...row,member_a_public_name:identities.get(row.member_a_id)??null,member_b_public_name:identities.get(row.member_b_id)??null}));
+  return data.map(row=>({memberAId:row.member_a_id,memberBId:row.member_b_id,memberATeamName:row.member_a_team_name,memberBTeamName:row.member_b_team_name,memberAPublicName:identities.get(row.member_a_id)??null,memberBPublicName:identities.get(row.member_b_id)??null,games:Number(row.games),memberAWins:Number(row.member_a_wins),memberBWins:Number(row.member_b_wins),ties:Number(row.ties),memberAPoints:Number(row.member_a_points),memberBPoints:Number(row.member_b_points)}));
 }
 
 export async function getDraftHistory() {

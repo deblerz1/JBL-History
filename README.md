@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestones 4D.1–4D.2 matchup details and records correction complete
+> **Status:** Milestone 4C.2 rivalry controls and 4D playoff exhibits complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -176,7 +176,7 @@ Changing `JBL_ACCESS_CODE` changes what members use on their next login. Changin
 
 ### Core museum exhibits
 
-The protected museum now includes five server-rendered exhibits backed by the
+The protected museum now includes six server-rendered exhibits backed by the
 private analytics contract:
 
 - The full 11-manager career table with championships, regular-season and playoff
@@ -234,6 +234,11 @@ matchup exhibits but no longer compete against genuine single-week performances.
 Authentication is enforced by the shared `/museum` layout, so every current and
 future exhibit inherits the same signed-cookie access check. All data fetching
 remains inside server components and uses the server-only Supabase client.
+
+The rivalry ledger now calculates each side's win percentage with ties worth half
+a win, displays the percentage gap, and defaults to the league's most one-sided
+histories. Visitors can filter to one current team identity or reorder the ledger
+by closest rivalry or most meetings without another database request.
 
 ### Verified private analytics foundation
 
