@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 3 historical backfill in progress
+> **Status:** Milestone 3 historical backfill complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -96,11 +96,11 @@ Persistent members will be modeled separately from season-specific teams because
 - [x] Deploy the private-first JBL Supabase schema
 - [x] Add an atomic, JBL-project-locked season import RPC
 - [x] Reconcile and idempotency-test the 2025 baseline import
-- [ ] Import seasons 2017–2026
-- Preserve recoverable raw provider payloads
-- Normalize settings, members, teams, drafts, matchups, rosters, and transactions
-- Make imports idempotent and safely resumable
-- Reconcile imported totals against ESPN
+- [x] Import seasons 2017–2026
+- [x] Preserve recoverable raw provider payloads
+- [x] Normalize settings, members, teams, drafts, matchups, rosters, and transactions
+- [x] Make imports idempotent and safely resumable
+- [x] Reconcile imported totals against ESPN
 
 ### Verified 2025 baseline
 
@@ -125,6 +125,19 @@ players. All draft picks link to a team and player. ESPN returned
 `ESPNInvalidLeague` from its historical communication endpoint, so 2025
 transactions are recorded as unavailable rather than silently treated as an empty
 transaction history.
+
+### Verified full-history backfill
+
+The 2017–2026 backfill contains 10 seasons, 86 season-team records, 694 matchups,
+1,376 draft picks, and 16,464 weekly roster rows. The active 2026 season currently
+contains 21 transactions with 36 transaction items; historical ESPN communication
+requests for 2019–2025 returned an explicit endpoint-availability warning. Weekly
+rosters and transactions are unavailable through the client for 2017–2018.
+
+Final integrity checks found zero duplicate matchup, draft-pick, or roster keys;
+zero teams without member links; zero draft picks without team/player links; and
+zero transactions without items. Seasons 2017–2025 are marked complete and 2026
+remains active for future refreshes.
 
 ### 4. Dashboard
 
