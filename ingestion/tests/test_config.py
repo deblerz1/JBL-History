@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from jbl_history.config import ConfigurationError, EspnConfig, load_env_file
+from jbl_history.config import (
+    ConfigurationError,
+    EspnConfig,
+    SupabaseConfig,
+    load_env_file,
+)
 
 
 def test_env_file_preserves_braces_and_equals(tmp_path: Path, monkeypatch) -> None:
@@ -22,3 +27,10 @@ def test_refuses_a_different_league(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("ESPN_LEAGUE_ID", "999")
     with pytest.raises(ConfigurationError, match="1550163"):
         EspnConfig.from_environment(tmp_path / "missing")
+
+
+def test_supabase_config_refuses_a_different_project(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://turing-test.supabase.co")
+    monkeypatch.setenv("SUPABASE_SECRET_KEY", "fixture-secret")
+    with pytest.raises(ConfigurationError, match="JBL History"):
+        SupabaseConfig.from_environment(tmp_path / "missing")

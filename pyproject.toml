@@ -9,6 +9,7 @@ description = "Read-only ESPN Fantasy Football ingestion for JBL History"
 requires-python = ">=3.11"
 dependencies = [
   "espn-api==0.46.0",
+  "requests==2.34.2",
 ]
 
 [project.optional-dependencies]

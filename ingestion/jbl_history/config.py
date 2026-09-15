@@ -66,3 +66,27 @@ class EspnConfig:
             swid=os.environ["ESPN_SWID"].strip(),
             espn_s2=os.environ["ESPN_S2"].strip(),
         )
+
+
+@dataclass(frozen=True)
+class SupabaseConfig:
+    url: str
+    secret_key: str
+
+    @classmethod
+    def from_environment(cls, env_file: Path | None = None) -> "SupabaseConfig":
+        load_env_file(env_file or Path(".env.local"))
+        url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+        secret_key = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
+        if not url or not secret_key:
+            raise ConfigurationError(
+                "Missing server-only Supabase configuration: "
+                "SUPABASE_URL, SUPABASE_SECRET_KEY"
+            )
+        expected_url = "https://ksoecnzmisoiyyfdgyoa.supabase.co"
+        if url != expected_url:
+            raise ConfigurationError(
+                "Refusing to run: SUPABASE_URL must target JBL History "
+                "(ksoecnzmisoiyyfdgyoa)."
+            )
+        return cls(url=url, secret_key=secret_key)

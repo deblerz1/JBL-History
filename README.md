@@ -93,7 +93,10 @@ Persistent members will be modeled separately from season-specific teams because
 
 ### 3. Historical Backfill
 
-- Import seasons 2017–2026
+- [x] Deploy the private-first JBL Supabase schema
+- [x] Add an atomic, JBL-project-locked season import RPC
+- [ ] Reconcile and idempotency-test the 2025 baseline import
+- [ ] Import seasons 2017–2026
 - Preserve recoverable raw provider payloads
 - Normalize settings, members, teams, drafts, matchups, rosters, and transactions
 - Make imports idempotent and safely resumable
