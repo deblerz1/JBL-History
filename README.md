@@ -2,7 +2,7 @@
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
 
-> **Status:** Milestone 3 historical backfill complete
+> **Status:** Milestone 4A private analytics foundation complete
 > **ESPN league ID:** `1550163`  
 > **Target seasons:** `2017–2026`  
 > **Current season:** `2026`  
@@ -141,11 +141,33 @@ remains active for future refreshes.
 
 ### 4. Dashboard
 
-- League overview and all-time standings
-- Season history and manager profiles
-- Head-to-head and matchup history
-- Draft history, championships, and playoff finishes
-- Import status and data-availability views
+- [x] Build the private analytics contract for the dashboard
+- [ ] Add a shared league access gate
+- [ ] Build the trophy-room museum shell and champions timeline
+- [ ] Add all-time manager, season, rivalry, draft, and records pages
+- [ ] Add the read-only league historian chatbot
+
+### Verified private analytics foundation
+
+Ten `security_invoker` views now provide a stable, read-only contract for the web
+application: season configuration and standings, reconstructed championship-bracket
+games, champions, manager careers, head-to-head rivalries, draft summaries, game
+performances, league records, and transaction totals.
+
+ESPN did not populate its playoff flag for the imported history. The analytics
+layer therefore derives each postseason from the season's schedule settings and
+reconstructs the championship bracket from playoff seeds and final standings. The
+result contains exactly five bracket games for each six-team playoff, three for
+each four-team playoff, and one championship matchup for every completed season.
+All nine champions from 2017–2025 are championship-matchup winners and match the
+season's first-place finisher.
+
+The analytics layer currently resolves 11 career managers, 53 head-to-head rivalry
+pairs, 86 team-season draft summaries, and 1,220 completed team-game performances.
+No member display names or other personal-name columns are exposed. `anon` and
+`authenticated` have no access; only the server-side `service_role` can select the
+views. The access gate in the next dashboard stage will proxy approved requests
+without sending the service-role secret to a browser.
 
 ### 5. Analytics and MCP
 
