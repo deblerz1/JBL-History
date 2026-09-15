@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "JBL History",
-  description: "Joey Bags Fantasy League history and analytics",
+  description: "A private fantasy league museum and statistical archive.",
+  robots: { index: false, follow: false, nocache: true },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
