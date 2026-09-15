@@ -1,46 +1,34 @@
-import { project, targetSeasonCount } from "@/lib/project";
+import Link from "next/link";
 
-export default function Home() {
+import { LoginForm } from "@/components/login-form";
+import { isLeagueSessionValid } from "@/lib/auth/session";
+
+export default async function Home() {
+  const hasAccess = await isLeagueSessionValid();
+
   return (
-    <main className="min-h-screen bg-[#0d1812] px-6 py-16 text-[#f4f0e6] sm:px-10">
-      <div className="mx-auto max-w-5xl">
-        <p className="mb-5 text-sm font-semibold uppercase tracking-[0.24em] text-[#d5a94e]">
-          {project.leagueName}
-        </p>
-        <h1 className="max-w-3xl text-5xl font-semibold tracking-tight sm:text-7xl">
-          Every season. Every matchup. One league history.
-        </h1>
-        <p className="mt-7 max-w-2xl text-lg leading-8 text-[#b9c6bc]">
-          A permanent, read-only archive of JBL results, records, drafts, and
-          rivalries. The foundation is ready for ESPN ingestion and historical
-          analytics.
-        </p>
-
-        <section className="mt-14 grid gap-4 sm:grid-cols-3">
-          <article className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-[#b9c6bc]">Historical range</p>
-            <p className="mt-2 text-3xl font-semibold">
-              {project.startYear}–{project.endYear}
-            </p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-[#b9c6bc]">Target seasons</p>
-            <p className="mt-2 text-3xl font-semibold">{targetSeasonCount}</p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <p className="text-sm text-[#b9c6bc]">ESPN access</p>
-            <p className="mt-2 text-3xl font-semibold">Private</p>
-          </article>
-        </section>
-
-        <div className="mt-14 rounded-2xl border border-[#d5a94e]/30 bg-[#d5a94e]/10 p-6">
-          <p className="font-semibold text-[#e8c778]">Milestone 1</p>
-          <p className="mt-2 text-[#d7dfd9]">
-            Project scaffolding, a private-first database migration, sanitized
-            fixtures, and automated verification.
-          </p>
+    <main className="museum-shell public-entry">
+      <div className="entry-grain" aria-hidden="true" />
+      <header className="entry-header">
+        <div className="league-mark" aria-label="JBL History"><span>JBL</span></div>
+        <p>Joey Bags Fantasy League</p>
+      </header>
+      <section className="entry-hero">
+        <div className="entry-copy">
+          <p className="eyebrow">Est. 2017 · Private archive</p>
+          <h1>The history is settled.<br />The arguments aren&apos;t.</h1>
+          <p className="entry-deck">Nine champions. Hundreds of matchups. Every glorious run and statistically indefensible collapse—preserved in one league museum.</p>
+          <div className="archive-stamp"><span>Official archive</span><strong>2017—Present</strong></div>
         </div>
-      </div>
+        <aside className="access-card">
+          <p className="eyebrow">Members &amp; invited guests</p>
+          <h2>{hasAccess ? "The vault is open." : "Enter the trophy room."}</h2>
+          <p>{hasAccess ? "Your private league session is active." : "Use the shared JBL access code. No ESPN credentials are required."}</p>
+          {hasAccess ? <Link className="primary-button" href="/museum">Continue to the museum <span>→</span></Link> : <LoginForm />}
+          <small>Private, read-only, and never affiliated with ESPN.</small>
+        </aside>
+      </section>
+      <footer className="entry-footer"><span>Champions</span><i /><span>Rivalries</span><i /><span>Drafts</span><i /><span>Records</span></footer>
     </main>
   );
 }
