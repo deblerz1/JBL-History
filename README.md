@@ -119,6 +119,13 @@ weekly roster snapshots plus transaction activity for 2019 and later. Each seaso
 runs independently, records structured availability warnings, and upserts stable
 provider identities so interrupted or repeated backfills can resume safely.
 
+The extended 2025 validation also passed twice with identical results: 160 unique
+draft picks and 2,819 unique roster rows spanning 17 weeks, 10 teams, and 277
+players. All draft picks link to a team and player. ESPN returned
+`ESPNInvalidLeague` from its historical communication endpoint, so 2025
+transactions are recorded as unavailable rather than silently treated as an empty
+transaction history.
+
 ### 4. Dashboard
 
 - League overview and all-time standings
