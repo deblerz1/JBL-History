@@ -57,7 +57,9 @@ def _fetch_history_bundle(league: League, year: int) -> dict[str, Any]:
         warnings.append(f"draft:{type(exc).__name__}")
 
     if year >= 2019:
-        final_week = int(getattr(league, "finalScoringPeriod", 0) or getattr(league, "current_week", 0) or 0)
+        configured_final_week = int(getattr(league, "finalScoringPeriod", 0) or 0)
+        current_week = int(getattr(league, "current_week", 0) or 0)
+        final_week = min(configured_final_week, current_week) if current_week else configured_final_week
         player_team_cache: dict[int, int] = {}
         for week in range(1, final_week + 1):
             try:
