@@ -16,7 +16,7 @@ export default async function Home() {
       <section className="entry-hero">
         <div className="entry-copy">
           <p className="eyebrow">Est. 2017 · Private archive</p>
-          <h1>The history is settled.<br />The arguments aren&apos;t.</h1>
+          <h1>For the 10th year anniversary,<br />the Joey Bags League presents:<br /><em>The JBL Museum</em></h1>
           <p className="entry-deck">Nine champions. Hundreds of matchups. Every glorious run and statistically indefensible collapse—preserved in one league museum.</p>
           <div className="archive-stamp"><span>Official archive</span><strong>2017—Present</strong></div>
         </div>
