@@ -113,9 +113,32 @@ export async function getDraftHistory() {
 
 export async function getLeagueRecords() {
   const supabase=createServerSupabaseClient();
-  const [{ data, error }, identities] = await Promise.all([supabase.from("analytics_league_records").select("record_type,record_rank,year,matchup_period,member_id,team_name,opponent_team_name,record_value").lte("record_rank", 10).order("record_type").order("record_rank"),identityMap(supabase)]);
+  const [recordsResult,gamesResult,standingsResult,settingsResult,identities] = await Promise.all([
+    supabase.from("analytics_league_records").select("record_type,record_rank,year,matchup_period,member_id,team_name,opponent_team_name,record_value").lte("record_rank", 10).order("record_type").order("record_rank"),
+    supabase.from("matchups").select("id,season_id,matchup_period,home_team_id,away_team_id,home_score,away_score,winner_team_id,is_playoff,is_complete").eq("is_complete",true),
+    supabase.from("analytics_season_standings").select("season_id,season_team_id,year,member_id,team_name,wins,losses,ties,points_for,points_against"),
+    supabase.from("scoring_settings").select("season_id,settings"),identityMap(supabase),
+  ]);
+  const {data,error}=recordsResult;
   if (error) throw new Error(`League records query failed: ${error.message}`);
-  return data.map(row=>({...row,public_name:identities.get(row.member_id)??null}));
+  if(gamesResult.error) throw new Error(`Record games query failed: ${gamesResult.error.message}`);
+  if(standingsResult.error) throw new Error(`Record standings query failed: ${standingsResult.error.message}`);
+  if(settingsResult.error) throw new Error(`Record settings query failed: ${settingsResult.error.message}`);
+  const teams=new Map(standingsResult.data.map(row=>[row.season_team_id,row]));
+  const singlePeriods=new Map(settingsResult.data.map(row=>{const settings=row.settings as {scheduleSettings?:{matchupPeriods?:Record<string,number[]>}}; return [row.season_id,settings.scheduleSettings?.matchupPeriods??{}] as const;}));
+  const games=gamesResult.data.flatMap(game=>{
+    const home=teams.get(game.home_team_id); const away=teams.get(game.away_team_id); if(!home||!away||game.home_score===null||game.away_score===null) return [];
+    const periods=singlePeriods.get(game.season_id)?.[String(game.matchup_period)]??[Number(game.matchup_period)]; if(periods.length!==1) return [];
+    return [{id:game.id,year:Number(home.year),matchupPeriod:Number(game.matchup_period),playoff:Boolean(game.is_playoff),margin:Math.abs(Number(game.home_score)-Number(game.away_score)),home:{teamName:home.team_name,publicName:identities.get(home.member_id)??null,score:Number(game.home_score),winner:game.winner_team_id===game.home_team_id},away:{teamName:away.team_name,publicName:identities.get(away.member_id)??null,score:Number(game.away_score),winner:game.winner_team_id===game.away_team_id}}];
+  });
+  const completedSeasons=standingsResult.data.filter(row=>Number(row.wins)+Number(row.losses)+Number(row.ties)>0);
+  const winRate=(row:(typeof completedSeasons)[number])=>{const games=Number(row.wins)+Number(row.losses)+Number(row.ties); return games?(Number(row.wins)+Number(row.ties)*.5)/games:0;};
+  const seasonRecords={
+    mostPoints:[...completedSeasons].sort((a,b)=>Number(b.points_for)-Number(a.points_for)).slice(0,10),
+    bestWinRate:[...completedSeasons].sort((a,b)=>winRate(b)-winRate(a)||Number(b.wins)-Number(a.wins)).slice(0,10),
+    mostPointsAgainst:[...completedSeasons].sort((a,b)=>Number(b.points_against)-Number(a.points_against)).slice(0,10),
+  };
+  return {weekly:data.map(row=>({...row,public_name:identities.get(row.member_id)??null})),closest:[...games].filter(g=>g.margin>0).sort((a,b)=>a.margin-b.margin).slice(0,10),blowouts:[...games].sort((a,b)=>b.margin-a.margin).slice(0,10),seasonRecords};
 }
 
 export async function getPlayoffArchive(): Promise<PlayoffSeason[]> {
