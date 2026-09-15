@@ -12,6 +12,7 @@ on:
           - validation
           - full-history
           - import-2025
+          - backfill-2017-2026
 
 permissions:
   contents: read
@@ -57,7 +58,7 @@ jobs:
         run: python -m pip install .
 
       - name: Verify JBL Supabase secret is configured
-        if: inputs.scope == 'import-2025'
+        if: inputs.scope == 'import-2025' || inputs.scope == 'backfill-2017-2026'
         shell: bash
         run: |
           set +x
@@ -98,6 +99,10 @@ jobs:
             --output reports/import-2025-second.json
           cmp reports/import-2025-first.json reports/import-2025-second.json
 
+      - name: Backfill JBL history
+        if: inputs.scope == 'backfill-2017-2026'
+        run: python -m jbl_history.cli backfill --output reports/backfill.json
+
       - name: Publish sanitized job summary
         if: always()
         run: |
@@ -118,7 +123,21 @@ jobs:
                   f"- Members: `{result['members']}`\n"
                   f"- Teams: `{result['teams']}`\n"
                   f"- Matchups: `{result['matchups']}`\n"
+                  f"- Draft picks: `{result['draft_picks']}`\n"
+                  f"- Weekly roster rows: `{result['roster_snapshots']}`\n"
+                  f"- Transactions: `{result['transactions']}`\n"
                   "- Idempotency: `passed`\n"
+              )
+              raise SystemExit(0)
+
+          backfill_path = Path("reports/backfill.json")
+          if backfill_path.exists():
+              result = json.loads(backfill_path.read_text())
+              summary.write_text(
+                  "## JBL historical backfill\n\n"
+                  f"- Requested: `{result['requested_seasons']}`\n"
+                  f"- Succeeded: `{result['succeeded_seasons']}`\n"
+                  f"- Failed: `{result['failed_seasons']}`\n"
               )
               raise SystemExit(0)
 
