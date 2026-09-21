@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {answerHistorian,answerHistorianPlan,type HistorianCorpus,type HistorianPlan} from "./historian";
+import {answerHistorian,answerHistorianPlan,deterministicHistorianPlan,type HistorianCorpus,type HistorianPlan} from "./historian";
 
 const corpus:HistorianCorpus={
   managers:[
@@ -39,6 +39,8 @@ describe("JBL Historian",()=>{
   it("honors explicit minimum-game requirements",()=>expect(answerHistorianPlan(plan({intent:"rank_metric",metric:"points_per_game",gameType:"playoffs",minimumGames:2}),corpus).answer).toContain("No manager met"));
   it("limits rankings to managers active in every requested season",()=>{const lateManager={memberId:"c",teamName:"Charlie",publicName:"Zack",championships:0,wins:0,losses:1,ties:0,winPercentage:0,playoffAppearances:0,playoffWins:0,playoffLosses:0,playoffWinPercentage:null,pointsFor:70};const withLateManager={...corpus,managers:[...corpus.managers,lateManager],games:[...corpus.games,{year:2022,memberId:"c",teamName:"Charlie",playoff:false,points:70,opponentPoints:100,result:"loss" as const}]};const result=answerHistorianPlan(plan({intent:"rank_metric",metric:"wins",ranking:"lowest",startYear:2021,endYear:2022,population:"active_every_season"}),withLateManager);expect(result.answer).toContain("Bravo");expect(result.answer).not.toContain("Charlie");});
   it("returns a full record list instead of one winner",()=>{const result=answerHistorianPlan(plan({intent:"rank_metric",metric:"wins",startYear:2021,endYear:2023,output:"list"}),corpus);expect(result.answer).toContain("ranked");expect(result.facts.some(fact=>fact.includes("Alpha")&&fact.includes("2-1"))).toBe(true);expect(result.facts.some(fact=>fact.includes("Bravo")&&fact.includes("1-2"))).toBe(true);});
+  it("deterministically plans a full team record list",()=>{const result=deterministicHistorianPlan("Give me a full list of all the team's records from 2022-2025");expect(result).toMatchObject({intent:"rank_metric",metric:"wins",startYear:2022,endYear:2025,gameType:"regular_season",output:"list",population:"all"});});
+  it("deterministically plans the every-season fewest-wins question",()=>{const result=deterministicHistorianPlan("Of teams involved in every season, who had the fewest regular-season wins from 2022–2025?");expect(result).toMatchObject({metric:"wins",ranking:"lowest",startYear:2022,endYear:2025,population:"active_every_season",output:"single"});});
   it("rejects an unknown manager through a grounded response",()=>expect(answerHistorianPlan(plan({intent:"manager_record",memberIds:["missing"]}),corpus).answer).toContain("grounded questions"));
   it("does not invent unsupported answers",()=>expect(answerHistorian("Who made the best trade?",corpus).answer).toContain("grounded questions"));
 });

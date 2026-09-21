@@ -1,5 +1,5 @@
 import "server-only";
-import {historianGameTypes,historianIntents,historianMetrics,historianOutputs,historianPopulations,historianRankings,type HistorianCorpus,type HistorianPlan} from "@/lib/historian";
+import {deterministicHistorianPlan,historianGameTypes,historianIntents,historianMetrics,historianOutputs,historianPopulations,historianRankings,type HistorianCorpus,type HistorianPlan} from "@/lib/historian";
 
 const FIRST_YEAR=2017;
 
@@ -44,6 +44,8 @@ function enforceQuestionSemantics(question:string,plan:HistorianPlan):HistorianP
 }
 
 export async function interpretHistorianQuestion(question:string,corpus:HistorianCorpus):Promise<HistorianPlan|null>{
+  const deterministicPlan=deterministicHistorianPlan(question);
+  if(deterministicPlan)return deterministicPlan;
   const apiKey=process.env.OPENAI_API_KEY; if(!apiKey)return null;
   const currentYear=new Date().getUTCFullYear();
   const managers=corpus.managers.map(manager=>({id:manager.memberId,publicName:manager.publicName,currentTeam:manager.teamName,historicalTeams:[...new Set(corpus.seasons.filter(season=>season.memberId===manager.memberId).map(season=>season.teamName))]}));

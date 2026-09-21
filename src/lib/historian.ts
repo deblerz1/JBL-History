@@ -20,6 +20,31 @@ export const historianOutputs=["single","list"] as const;
 export type HistorianOutput=(typeof historianOutputs)[number];
 export type HistorianPlan={intent:HistorianIntent;memberIds:string[];startYear:number|null;endYear:number|null;metric:HistorianMetric|null;gameType:HistorianGameType;ranking:HistorianRanking;windowYears:number|null;minimumGames:number|null;population:HistorianPopulation;output:HistorianOutput;limit:number|null};
 
+export function deterministicHistorianPlan(rawQuestion:string):HistorianPlan|null{
+  const question=rawQuestion.toLowerCase().replace(/[’']/g,"'");
+  const years=[...question.matchAll(/\b20(?:1[7-9]|2\d)\b/g)].map(match=>Number(match[0]));
+  if(years.length<2)return null;
+  const asksForList=/\b(?:list|everyone|everybody|all (?:the )?(?:teams?|managers?))\b/.test(question);
+  const asksForRecord=/\brecords?\b/.test(question);
+  const asksForWins=/\bwins?\b/.test(question);
+  const asksForWinRate=/\b(?:win percentage|win rate)\b/.test(question);
+  if(!asksForRecord&&!asksForWins&&!asksForWinRate)return null;
+  return {
+    intent:"rank_metric",
+    memberIds:[],
+    startYear:Math.min(...years),
+    endYear:Math.max(...years),
+    metric:asksForWinRate?"win_percentage":"wins",
+    gameType:/\bplayoffs?\b/.test(question)?"playoffs":"regular_season",
+    ranking:/\b(?:fewest|least|lowest|worst)\b/.test(question)?"lowest":"highest",
+    windowYears:null,
+    minimumGames:null,
+    population:/\b(?:each|every) season\b/.test(question)?"active_every_season":"all",
+    output:asksForList?"list":"single",
+    limit:null,
+  };
+}
+
 const pct=(value:number|null)=>value===null?"—":`${(value*100).toFixed(1)}%`;
 const record=(wins:number,losses:number,ties:number)=>`${wins}-${losses}${ties?`-${ties}`:""}`;
 const includesPhrase=(question:string,value:string|null|undefined)=>Boolean(value&&value.length>1&&question.includes(value.toLowerCase()));
