@@ -22,6 +22,13 @@ export type HistorianPlan={intent:HistorianIntent;memberIds:string[];startYear:n
 
 export function deterministicHistorianPlan(rawQuestion:string):HistorianPlan|null{
   const question=rawQuestion.toLowerCase().replace(/[’']/g,"'");
+  // This fast path accepts complete, narrowly defined requests only. Unknown
+  // qualifiers must reach the model rather than being silently discarded.
+  const normalized=question.replace(/[“”"?.]/g,"").replace(/[–—]/g,"-").replace(/\s+/g," ").trim();
+  const listPattern=/^(?:give me |show me |show )?(?:a (?:full )?)?list (?:of )?(?:everyone's|every manager's|all (?:the )?teams?'?s?|all managers'?)(?: regular-season| regular season)? records? from (20\d{2})\s*(?:-|through|to)\s*(20\d{2})$/;
+  const cohortPattern=/^of teams involved in every season,? who (?:had|has) the fewest regular-season wins from (20\d{2})\s*(?:-|through|to)\s*(20\d{2})$/;
+  const matched=normalized.match(listPattern)??normalized.match(cohortPattern);
+  if(!matched||Number(matched[1])<2017||Number(matched[2])>new Date().getUTCFullYear()||Number(matched[1])>Number(matched[2]))return null;
   const years=[...question.matchAll(/\b20(?:1[7-9]|2\d)\b/g)].map(match=>Number(match[0]));
   if(years.length<2)return null;
   const asksForList=/\b(?:list|everyone|everybody|all (?:the )?(?:teams?|managers?))\b/.test(question);

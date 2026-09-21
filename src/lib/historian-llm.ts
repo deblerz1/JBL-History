@@ -1,4 +1,5 @@
 import "server-only";
+import {plannerDiagnostic,responseProblem,type PlannerOutcome} from "./historian-diagnostics";
 import {deterministicHistorianPlan,historianGameTypes,historianIntents,historianMetrics,historianOutputs,historianPopulations,historianRankings,type HistorianCorpus,type HistorianPlan} from "@/lib/historian";
 
 const FIRST_YEAR=2017;
@@ -32,7 +33,7 @@ function validatePlan(value:unknown,corpus:HistorianCorpus):HistorianPlan|null{
 function enforceQuestionSemantics(question:string,plan:HistorianPlan):HistorianPlan{
   const q=question.toLowerCase();
   const years=[...q.matchAll(/\b20(?:1[7-9]|2\d)\b/g)].map(match=>Number(match[0]));
-  const explicitWindow=/\b(?:rolling|consecutive|stretch|span|window)\b/.test(q);
+  const explicitWindow=/\b(?:rolling|consecutive|stretch|span|window)\b|\b(?:two|three|four|five|\d+)[ -](?:year|season)/.test(q);
   return {
     ...plan,
     startYear:years.length>=2?Math.min(...years):plan.startYear,
@@ -44,9 +45,14 @@ function enforceQuestionSemantics(question:string,plan:HistorianPlan):HistorianP
 }
 
 export async function interpretHistorianQuestion(question:string,corpus:HistorianCorpus):Promise<HistorianPlan|null>{
+  const requestId=crypto.randomUUID();const started=Date.now();
+  const finish=(outcome:PlannerOutcome,plan:HistorianPlan|null=null,httpStatus?:number)=>{
+    console.info(JSON.stringify(plannerDiagnostic(requestId,started,outcome,httpStatus)));
+    return plan;
+  };
   const deterministicPlan=deterministicHistorianPlan(question);
-  if(deterministicPlan)return deterministicPlan;
-  const apiKey=process.env.OPENAI_API_KEY; if(!apiKey)return null;
+  if(deterministicPlan)return finish("shortcut",deterministicPlan);
+  const apiKey=process.env.OPENAI_API_KEY; if(!apiKey)return finish("missing_key");
   const currentYear=new Date().getUTCFullYear();
   const managers=corpus.managers.map(manager=>({id:manager.memberId,publicName:manager.publicName,currentTeam:manager.teamName,historicalTeams:[...new Set(corpus.seasons.filter(season=>season.memberId===manager.memberId).map(season=>season.teamName))]}));
   const body={model:process.env.OPENAI_MODEL||"gpt-5.6-luna",store:false,input:[
@@ -56,9 +62,15 @@ export async function interpretHistorianQuestion(question:string,corpus:Historia
   const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),8000);
   try{
     const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify(body),signal:controller.signal});
-    if(!response.ok)return null;
-    const text=outputText(await response.json()); if(!text)return null;
-    const plan=validatePlan(JSON.parse(text),corpus);
-    return plan?enforceQuestionSemantics(question,plan):null;
-  }catch{return null;}finally{clearTimeout(timeout);}
+    if(!response.ok)return finish("http_error",null,response.status);
+    const payload=await response.json();const problem=responseProblem(payload);
+    if(problem)return finish(problem);
+    const text=outputText(payload); if(!text)return finish("empty_output");
+    let decoded:unknown;
+    try{decoded=JSON.parse(text);}catch{return finish("invalid_json");}
+    const plan=validatePlan(decoded,corpus);
+    if(!plan)return finish("invalid_plan");
+    const normalized=validatePlan(enforceQuestionSemantics(question,plan),corpus);
+    return normalized?finish("success",normalized):finish("invalid_plan");
+  }catch(error){return finish(controller.signal.aborted?"timeout":error instanceof SyntaxError?"invalid_json":"network_error");}finally{clearTimeout(timeout);}
 }

@@ -29,6 +29,23 @@ const corpus:HistorianCorpus={
 const plan=(overrides:Partial<HistorianPlan>):HistorianPlan=>({intent:"unsupported",memberIds:[],startYear:null,endYear:null,metric:null,gameType:"regular_season",ranking:"highest",windowYears:null,minimumGames:null,population:"all",output:"single",limit:null,...overrides});
 
 describe("JBL Historian",()=>{
+  it.each([
+    "What is Zach's record from 2022–2025?",
+    "Who had the best two-year win percentage from 2022–2025?",
+    "List everyone's record against Foz from 2022–2025",
+    "List everyone's playoff record from 2022–2025",
+    "List everyone's record from 2022–2025 with at least 30 games",
+    "List everyone's record in 2022 and 2025 only",
+    "List everyone's record from 2025–2022",
+    "List everyone's record from 2010–2025",
+    "List everyone's record from 2022–2099",
+    "Show the top five managers by wins from 2022–2025",
+  ])("does not discard qualifiers in %s",question=>expect(deterministicHistorianPlan(question)).toBeNull());
+  it.each([
+    "“Give me a list of all team records from 2022–2025.”",
+    "“List everyone’s regular-season record from 2022–2025.”",
+    "Give me a full list of all the team's records from 2022-2025",
+  ])("recognizes the complete record-list request %s",question=>expect(deterministicHistorianPlan(question)).toMatchObject({output:"list",startYear:2022,endYear:2025,memberIds:[]}));
   it("answers championship questions by year",()=>expect(answerHistorian("Who won the championship in 2021?",corpus).answer).toContain("Old Alpha"));
   it("resolves public manager names",()=>expect(answerHistorian("What is Foz's career record?",corpus).answer).toContain("50-30"));
   it("answers rivalry questions",()=>expect(answerHistorian("Foz vs Jack V head to head",corpus).answer).toContain("8-4"));
