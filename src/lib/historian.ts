@@ -62,6 +62,19 @@ function mentionedManagers(question:string,corpus:HistorianCorpus){
 
 export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse {
   if(plan.intent==="rank_metric")return answerRankedMetric(plan,corpus);
+  const ranged=plan.startYear!==null||plan.endYear!==null;
+  const unsupportedScope=
+    plan.windowYears!==null||plan.minimumGames!==null||plan.population!=="all"||plan.output!=="single"||plan.limit!==null||
+    (plan.intent==="manager_record"&&plan.gameType!=="regular_season")||
+    (["manager_playoffs","rivalry","championship_leader","best_win_percentage"].includes(plan.intent)&&ranged)||
+    (plan.intent==="rivalry"&&plan.gameType!=="regular_season")||
+    (["highest_score","lowest_score"].includes(plan.intent)&&(ranged||plan.memberIds.length>0||plan.gameType!=="regular_season"))||
+    (["championship","season_summary"].includes(plan.intent)&&plan.endYear!==null&&plan.endYear!==plan.startYear)||
+    (plan.intent==="championship"&&ranged&&plan.memberIds.length>0);
+  if(unsupportedScope)return {
+    answer:"I can't apply all of those filters to this statistic yet. I haven't substituted a career total or an unfiltered league record.",
+    facts:["Date-filtered rivalry and playoff summaries, and filtered weekly records, need additional query support."],
+  };
   const managers=plan.memberIds.map(id=>corpus.managers.find(manager=>manager.memberId===id)).filter((manager):manager is HistorianManager=>Boolean(manager));
   const first=managers[0];
   if(plan.intent==="manager_record"&&first){

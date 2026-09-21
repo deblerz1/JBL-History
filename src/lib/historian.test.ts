@@ -30,6 +30,17 @@ const plan=(overrides:Partial<HistorianPlan>):HistorianPlan=>({intent:"unsupport
 
 describe("JBL Historian",()=>{
   it.each([
+    plan({intent:"manager_playoffs",memberIds:["a"],startYear:2022,endYear:2023}),
+    plan({intent:"rivalry",memberIds:["a","b"],startYear:2022,endYear:2023}),
+    plan({intent:"highest_score",startYear:2023,endYear:2023}),
+    plan({intent:"lowest_score",memberIds:["b"]}),
+    plan({intent:"championship_leader",startYear:2022,endYear:2023}),
+    plan({intent:"championship",startYear:2021,endYear:2023}),
+    plan({intent:"manager_record",memberIds:["a"],gameType:"playoffs"}),
+  ])("does not replace an unsupported filtered query with career data: %j",query=>{
+    expect(answerHistorianPlan(query,corpus).answer).toContain("can't apply all of those filters");
+  });
+  it.each([
     "What is Zach's record from 2022–2025?",
     "Who had the best two-year win percentage from 2022–2025?",
     "List everyone's record against Foz from 2022–2025",
