@@ -29,6 +29,26 @@ const corpus:HistorianCorpus={
 const plan=(overrides:Partial<HistorianPlan>):HistorianPlan=>({intent:"unsupported",memberIds:[],startYear:null,endYear:null,metric:null,gameType:"regular_season",ranking:"highest",windowYears:null,minimumGames:null,population:"all",output:"single",limit:null,...overrides});
 
 describe("JBL Historian",()=>{
+  const rivalryCorpus={...corpus,games:corpus.games.map(g=>({...g,opponentMemberId:g.memberId==="a"?"b":"a"}))};
+  it("filters rivalries by dates and counts each meeting once",()=>{
+    const result=answerHistorianPlan(plan({intent:"rivalry",memberIds:["a","b"],startYear:2022,endYear:2023}),rivalryCorpus);
+    expect(result.answer).toContain("1-1");
+    expect(result.facts).toContain("2 completed meetings");
+    expect(result.table?.rows).toEqual([["Alpha","1-1","50.0%","200.00"],["Bravo","1-1","50.0%","210.00"]]);
+  });
+  it("separates playoff rivalries and reverses the perspective correctly",()=>{
+    const result=answerHistorianPlan(plan({intent:"rivalry",memberIds:["b","a"],gameType:"playoffs",startYear:2023,endYear:2023}),rivalryCorpus);
+    expect(result.answer).toContain("Bravo is 0-1");
+    expect(result.table?.rows[0]).toEqual(["Bravo","0-1","0.0%","130.00"]);
+  });
+  it("reports no meetings for an empty rivalry range",()=>{
+    expect(answerHistorianPlan(plan({intent:"rivalry",memberIds:["a","b"],startYear:2024}),rivalryCorpus).answer).toContain("No completed");
+  });
+  it("returns ranking tables with the actual participation years",()=>{
+    const result=answerHistorianPlan(plan({intent:"rank_metric",metric:"wins",output:"list",startYear:2021,endYear:2023}),corpus);
+    expect(result.table?.rows[0]).toEqual(["Alpha","2021–2023","2-1","66.7%","2"]);
+    expect(result.table?.rows).toHaveLength(2);
+  });
   it("filters playoff records to the requested seasons",()=>{
     const result=answerHistorianPlan(plan({intent:"manager_playoffs",memberIds:["a"],startYear:2022,endYear:2023}),corpus);
     expect(result.answer).toContain("1-0");
@@ -51,7 +71,6 @@ describe("JBL Historian",()=>{
     expect(result.answer).toContain("75.0%");
   });
   it.each([
-    plan({intent:"rivalry",memberIds:["a","b"],startYear:2022,endYear:2023}),
     plan({intent:"highest_score",startYear:2023,endYear:2023}),
     plan({intent:"lowest_score",memberIds:["b"]}),
     plan({intent:"championship_leader",startYear:2022,endYear:2023}),

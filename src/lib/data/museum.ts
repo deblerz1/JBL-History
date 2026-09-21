@@ -46,8 +46,8 @@ export async function getHistorianCorpus():Promise<HistorianCorpus> {
     const playoff=playoffIds.has(matchup.id); const regular=Number(matchup.matchup_period)<=Number(regularPeriods.get(matchup.season_id)); if(!regular&&!playoff)return [];
     const result=(teamId:string):"win"|"loss"|"tie"=>matchup.winner_team_id===null?"tie":matchup.winner_team_id===teamId?"win":"loss";
     return [
-      {year:Number(home.year),memberId:home.member_id,teamName:home.team_name,playoff,points:Number(matchup.home_score),opponentPoints:Number(matchup.away_score),result:result(matchup.home_team_id)},
-      {year:Number(away.year),memberId:away.member_id,teamName:away.team_name,playoff,points:Number(matchup.away_score),opponentPoints:Number(matchup.home_score),result:result(matchup.away_team_id)},
+      {year:Number(home.year),memberId:home.member_id,opponentMemberId:away.member_id,teamName:home.team_name,playoff,points:Number(matchup.home_score),opponentPoints:Number(matchup.away_score),result:result(matchup.home_team_id)},
+      {year:Number(away.year),memberId:away.member_id,opponentMemberId:home.member_id,teamName:away.team_name,playoff,points:Number(matchup.away_score),opponentPoints:Number(matchup.home_score),result:result(matchup.away_team_id)},
     ];
   });
   return {

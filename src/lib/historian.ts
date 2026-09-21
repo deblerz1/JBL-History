@@ -3,9 +3,9 @@ export type HistorianChampion={year:number;memberId:string;teamName:string;publi
 export type HistorianRivalry={memberAId:string;memberBId:string;memberATeamName:string;memberBTeamName:string;memberAPublicName:string|null;memberBPublicName:string|null;games:number;memberAWins:number;memberBWins:number;ties:number};
 export type HistorianRecord={type:string;rank:number;year:number;week:number;memberId:string;teamName:string;publicName:string|null;opponent:string;value:number};
 export type HistorianSeason={year:number;memberId:string;teamName:string;wins:number;losses:number;ties:number;pointsFor:number;finalStanding:number|null};
-export type HistorianGame={year:number;memberId:string;teamName:string;playoff:boolean;points:number;opponentPoints:number;result:"win"|"loss"|"tie"};
+export type HistorianGame={year:number;memberId:string;opponentMemberId?:string;teamName:string;playoff:boolean;points:number;opponentPoints:number;result:"win"|"loss"|"tie"};
 export type HistorianCorpus={managers:HistorianManager[];champions:HistorianChampion[];rivalries:HistorianRivalry[];records:HistorianRecord[];seasons:HistorianSeason[];games:HistorianGame[]};
-export type HistorianResponse={answer:string;facts:string[];href?:string;hrefLabel?:string};
+export type HistorianResponse={answer:string;facts:string[];table?:{caption:string;columns:string[];rows:string[][]};href?:string;hrefLabel?:string};
 export const historianIntents=["manager_record","manager_playoffs","championship","championship_leader","rivalry","season_summary","highest_score","lowest_score","best_win_percentage","rank_metric","unsupported"] as const;
 export type HistorianIntent=(typeof historianIntents)[number];
 export const historianMetrics=["win_percentage","points_per_game","points_against_per_game","average_margin","total_points","games_played","wins"] as const;
@@ -65,14 +65,13 @@ export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):H
   const ranged=plan.startYear!==null||plan.endYear!==null;
   const unsupportedScope=
     plan.windowYears!==null||plan.minimumGames!==null||plan.population!=="all"||plan.output!=="single"||plan.limit!==null||
-    (["rivalry","championship_leader","best_win_percentage"].includes(plan.intent)&&ranged)||
-    (plan.intent==="rivalry"&&plan.gameType!=="regular_season")||
+    (["championship_leader","best_win_percentage"].includes(plan.intent)&&ranged)||
     (["highest_score","lowest_score"].includes(plan.intent)&&(ranged||plan.memberIds.length>0||plan.gameType!=="regular_season"))||
     (["championship","season_summary"].includes(plan.intent)&&plan.endYear!==null&&plan.endYear!==plan.startYear)||
     (plan.intent==="championship"&&ranged&&plan.memberIds.length>0);
   if(unsupportedScope)return {
     answer:"I can't apply all of those filters to this statistic yet. I haven't substituted a career total or an unfiltered league record.",
-    facts:["Date-filtered rivalry and playoff summaries, and filtered weekly records, need additional query support."],
+    facts:["This combination of statistic and filters needs additional query support."],
   };
   const managers=plan.memberIds.map(id=>corpus.managers.find(manager=>manager.memberId===id)).filter((manager):manager is HistorianManager=>Boolean(manager));
   const first=managers[0];
@@ -110,8 +109,24 @@ export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):H
   }
   if(plan.intent==="manager_playoffs"&&first)return {answer:`${first.teamName} has made the playoffs ${first.playoffAppearances} times and is ${first.playoffWins}-${first.playoffLosses} in recorded playoff games (${pct(first.playoffWinPercentage)}).`,facts:[`${first.championships} championships`,`${pct(first.winPercentage)} regular-season win rate`],href:`/museum/managers/${first.memberId}`,hrefLabel:"Open the career exhibit"};
   if(plan.intent==="rivalry"&&managers.length>=2){
-    const [a,b]=managers; const rivalry=corpus.rivalries.find(r=>(r.memberAId===a.memberId&&r.memberBId===b.memberId)||(r.memberAId===b.memberId&&r.memberBId===a.memberId));
-    if(rivalry){const aWins=rivalry.memberAId===a.memberId?rivalry.memberAWins:rivalry.memberBWins;const bWins=rivalry.memberAId===b.memberId?rivalry.memberAWins:rivalry.memberBWins;const leader=aWins===bWins?"The series is tied.":`${aWins>bWins?a.teamName:b.teamName} leads the series.`;return {answer:`${a.teamName} is ${aWins}-${bWins}${rivalry.ties?`-${rivalry.ties}`:""} against ${b.teamName} across ${rivalry.games} meetings. ${leader}`,facts:[`${a.publicName??a.teamName}: ${aWins} wins`,`${b.publicName??b.teamName}: ${bWins} wins`,`${rivalry.ties} ties`],href:"/museum/rivalries",hrefLabel:"Open the rivalry room"};}
+    const [a,b]=managers;
+    if(a.memberId===b.memberId)return {answer:"Choose two different managers for a rivalry.",facts:[]};
+    const games=corpus.games.filter(game=>game.memberId===a.memberId&&game.opponentMemberId===b.memberId&&
+      (plan.startYear===null||game.year>=plan.startYear)&&(plan.endYear===null||game.year<=plan.endYear)&&
+      (plan.gameType==="all"||game.playoff===(plan.gameType==="playoffs")));
+    const phase=plan.gameType==="all"?"regular-season and playoff":plan.gameType==="playoffs"?"playoff":"regular-season";
+    const period=plan.startYear!==null&&plan.endYear!==null?`${plan.startYear}–${plan.endYear}`:
+      plan.startYear!==null?`since ${plan.startYear}`:plan.endYear!==null?`through ${plan.endYear}`:"all recorded seasons";
+    if(!games.length)return {answer:`No completed ${phase} meetings are recorded between ${a.teamName} and ${b.teamName} (${period}).`,facts:[]};
+    const wins=games.filter(game=>game.result==="win").length;
+    const losses=games.filter(game=>game.result==="loss").length;
+    const ties=games.length-wins-losses;
+    return {answer:`${a.teamName} is ${record(wins,losses,ties)} against ${b.teamName} in ${phase} games (${period}).`,
+      facts:[`${games.length} completed meetings`,"Win percentage counts a tie as half a win; consolation games excluded"],
+      table:{caption:`Head-to-head · ${period}`,columns:["Team","Record","Win %","Points"],rows:[
+        [a.teamName,record(wins,losses,ties),pct((wins+ties*.5)/games.length),games.reduce((sum,g)=>sum+g.points,0).toFixed(2)],
+        [b.teamName,record(losses,wins,ties),pct((losses+ties*.5)/games.length),games.reduce((sum,g)=>sum+g.opponentPoints,0).toFixed(2)],
+      ]},href:"/museum/rivalries",hrefLabel:"Open the rivalry room"};
   }
   if(plan.intent==="championship"){
     if(plan.startYear!==null){const champion=corpus.champions.find(c=>c.year===plan.startYear);return champion?{answer:`${champion.teamName} won the ${plan.startYear} JBL championship, defeating ${champion.runnerUp} ${champion.score.toFixed(2)}–${champion.runnerUpScore.toFixed(2)}.`,facts:[champion.publicName??champion.teamName,`${champion.score.toFixed(2)} championship points`],href:"/museum/playoffs",hrefLabel:"View the playoff museum"}:{answer:`The ${plan.startYear} champion is not yet recorded as final.`,facts:["The historian reports only completed championship matchups."],href:"/museum/seasons",hrefLabel:"Open the season archive"};}
@@ -166,6 +181,9 @@ function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):Historian
     return {
       answer:`Here are the ${phase} results for ${period}, ranked from ${plan.ranking} to ${plan.ranking==="highest"?"lowest":"highest"} ${metricLabel[metric]}.`,
       facts:listed.map((row,index)=>`${index+1}. ${row.manager.teamName} — ${record(row.wins,row.losses,row.ties)} (${pct((row.wins+row.ties*.5)/row.games)}), ${formatValue(row)} ${metricLabel[metric]}`),
+      table:{caption:`${phase} results · ${period}`,columns:["Team","Seasons","Record","Win %",metricLabel[metric]],rows:listed.map(row=>[
+        row.manager.teamName,`${row.startYear}–${row.endYear}`,record(row.wins,row.losses,row.ties),pct((row.wins+row.ties*.5)/row.games),formatValue(row),
+      ])},
       href:"/museum/managers",
       hrefLabel:"View manager rankings"
     };
