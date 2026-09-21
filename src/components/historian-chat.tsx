@@ -5,7 +5,7 @@ import { askHistorian } from "@/app/actions";
 import type { HistorianResponse } from "@/lib/historian";
 
 type Message={role:"visitor"|"historian";text:string;response?:HistorianResponse};
-const suggestions=["Who has the best career win percentage?","Who won the championship in 2021?","What is Foz's career record?","Who owns the highest weekly score?"];
+const suggestions=["Who had the best two-year win percentage?","Who scores the most regular-season points per game?","Who won the championship in 2021?","What is Foz's career record?"];
 export function HistorianChat(){
   const [messages,setMessages]=useState<Message[]>([{role:"historian",text:"The JBL archive is open. Ask me for a manager record, championship, rivalry, playoff résumé, season result, or scoring extreme."}]);
   const [question,setQuestion]=useState(""); const [pending,startTransition]=useTransition(); const inputRef=useRef<HTMLInputElement>(null);
