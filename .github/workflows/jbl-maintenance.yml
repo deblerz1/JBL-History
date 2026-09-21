@@ -1,0 +1,55 @@
+name: JBL daily refresh and regression checks
+
+on:
+  schedule:
+    - cron: '23 10 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/jbl-maintenance.yml'
+
+permissions:
+  contents: read
+
+# Share the lock with manual imports to avoid overlapping database writes.
+concurrency:
+  group: espn-connectivity
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - run: python -m pip install '.[dev]'
+      - run: python -m pytest
+      - run: npm ci
+      - run: npm test
+
+  refresh:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ESPN_LEAGUE_ID: '1550163'
+      ESPN_START_YEAR: '2017'
+      ESPN_SWID: ${{ secrets.ESPN_SWID }}
+      ESPN_S2: ${{ secrets.ESPN_S2 }}
+      SUPABASE_URL: https://ksoecnzmisoiyyfdgyoa.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - run: python -m pip install .
+      - name: Refresh season and validate import receipt
+        run: python -m jbl_history.refresh
+      - name: Report failure
+        if: failure()
+        run: echo 'JBL refresh failed. Inspect the failed step; a successful current import has not been confirmed.' >> "$GITHUB_STEP_SUMMARY"
