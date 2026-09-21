@@ -65,8 +65,7 @@ export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):H
   const ranged=plan.startYear!==null||plan.endYear!==null;
   const unsupportedScope=
     plan.windowYears!==null||plan.minimumGames!==null||plan.population!=="all"||plan.output!=="single"||plan.limit!==null||
-    (plan.intent==="manager_record"&&plan.gameType!=="regular_season")||
-    (["manager_playoffs","rivalry","championship_leader","best_win_percentage"].includes(plan.intent)&&ranged)||
+    (["rivalry","championship_leader","best_win_percentage"].includes(plan.intent)&&ranged)||
     (plan.intent==="rivalry"&&plan.gameType!=="regular_season")||
     (["highest_score","lowest_score"].includes(plan.intent)&&(ranged||plan.memberIds.length>0||plan.gameType!=="regular_season"))||
     (["championship","season_summary"].includes(plan.intent)&&plan.endYear!==null&&plan.endYear!==plan.startYear)||
@@ -77,6 +76,25 @@ export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):H
   };
   const managers=plan.memberIds.map(id=>corpus.managers.find(manager=>manager.memberId===id)).filter((manager):manager is HistorianManager=>Boolean(manager));
   const first=managers[0];
+  if(first&&((plan.intent==="manager_playoffs"&&ranged)||(plan.intent==="manager_record"&&plan.gameType!=="regular_season"))){
+    const phase=plan.intent==="manager_playoffs"?"playoffs":plan.gameType;
+    const games=corpus.games.filter(game=>game.memberId===first.memberId&&
+      (phase==="all"||game.playoff===(phase==="playoffs"))&&
+      (plan.startYear===null||game.year>=plan.startYear)&&
+      (plan.endYear===null||game.year<=plan.endYear));
+    const period=plan.startYear!==null&&plan.endYear!==null?`${plan.startYear}–${plan.endYear}`:
+      plan.startYear!==null?`since ${plan.startYear}`:plan.endYear!==null?`through ${plan.endYear}`:"all recorded seasons";
+    const label=phase==="playoffs"?"playoff":"combined regular-season and playoff";
+    if(!games.length)return {answer:`No completed ${label} games are recorded for ${first.teamName} (${period}).`,facts:["Missing games are not counted as losses."]};
+    const wins=games.filter(game=>game.result==="win").length;
+    const losses=games.filter(game=>game.result==="loss").length;
+    const ties=games.length-wins-losses;
+    return {
+      answer:`${first.teamName} is ${record(wins,losses,ties)} in ${label} games (${period}), a ${pct((wins+ties*.5)/games.length)} win rate.`,
+      facts:[`${games.length} completed games`,`${games.reduce((sum,game)=>sum+game.points,0).toFixed(2)} points scored`,"One result per matchup; consolation games excluded"],
+      href:`/museum/managers/${first.memberId}`,hrefLabel:"Open the career exhibit",
+    };
+  }
   if(plan.intent==="manager_record"&&first){
     const ranged=plan.startYear!==null||plan.endYear!==null;
     if(!ranged)return managerCareerAnswer(first);

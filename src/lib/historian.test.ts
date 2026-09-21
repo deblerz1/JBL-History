@@ -29,14 +29,33 @@ const corpus:HistorianCorpus={
 const plan=(overrides:Partial<HistorianPlan>):HistorianPlan=>({intent:"unsupported",memberIds:[],startYear:null,endYear:null,metric:null,gameType:"regular_season",ranking:"highest",windowYears:null,minimumGames:null,population:"all",output:"single",limit:null,...overrides});
 
 describe("JBL Historian",()=>{
+  it("filters playoff records to the requested seasons",()=>{
+    const result=answerHistorianPlan(plan({intent:"manager_playoffs",memberIds:["a"],startYear:2022,endYear:2023}),corpus);
+    expect(result.answer).toContain("1-0");
+    expect(result.answer).toContain("2022–2023");
+    expect(result.answer).toContain("100.0%");
+    expect(result.answer).not.toContain("4-3");
+  });
+  it("reports an empty playoff range instead of career totals",()=>{
+    expect(answerHistorianPlan(plan({intent:"manager_playoffs",memberIds:["a"],endYear:2022}),corpus).answer).toContain("No completed playoff games");
+  });
+  it("supports combined records while preserving the date filter",()=>{
+    const result=answerHistorianPlan(plan({intent:"manager_record",memberIds:["a"],gameType:"all",startYear:2023,endYear:2023}),corpus);
+    expect(result.answer).toContain("1-1");
+    expect(result.answer).toContain("50.0%");
+  });
+  it("counts a playoff tie as half a win",()=>{
+    const tied={...corpus,games:[...corpus.games,{year:2023,memberId:"a",teamName:"Alpha",playoff:true,points:100,opponentPoints:100,result:"tie" as const}]};
+    const result=answerHistorianPlan(plan({intent:"manager_record",memberIds:["a"],gameType:"playoffs"}),tied);
+    expect(result.answer).toContain("1-0-1");
+    expect(result.answer).toContain("75.0%");
+  });
   it.each([
-    plan({intent:"manager_playoffs",memberIds:["a"],startYear:2022,endYear:2023}),
     plan({intent:"rivalry",memberIds:["a","b"],startYear:2022,endYear:2023}),
     plan({intent:"highest_score",startYear:2023,endYear:2023}),
     plan({intent:"lowest_score",memberIds:["b"]}),
     plan({intent:"championship_leader",startYear:2022,endYear:2023}),
     plan({intent:"championship",startYear:2021,endYear:2023}),
-    plan({intent:"manager_record",memberIds:["a"],gameType:"playoffs"}),
   ])("does not replace an unsupported filtered query with career data: %j",query=>{
     expect(answerHistorianPlan(query,corpus).answer).toContain("can't apply all of those filters");
   });
