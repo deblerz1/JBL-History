@@ -1,6 +1,6 @@
 import "server-only";
 import {plannerDiagnostic,responseProblem,type PlannerOutcome} from "./historian-diagnostics";
-import {deterministicHistorianPlan,historianGameTypes,historianIntents,historianMetrics,historianOutputs,historianPopulations,historianRankings,type HistorianCorpus,type HistorianPlan} from "@/lib/historian";
+import {deterministicHistorianPlan,historianGameTypes,historianIntents,historianMetrics,historianOutputs,historianPopulations,historianRankings,type HistorianCorpus,type HistorianPlan} from "./historian";
 
 const FIRST_YEAR=2017;
 
