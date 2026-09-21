@@ -14,7 +14,11 @@ export const historianGameTypes=["regular_season","playoffs","all"] as const;
 export type HistorianGameType=(typeof historianGameTypes)[number];
 export const historianRankings=["highest","lowest"] as const;
 export type HistorianRanking=(typeof historianRankings)[number];
-export type HistorianPlan={intent:HistorianIntent;memberIds:string[];startYear:number|null;endYear:number|null;metric:HistorianMetric|null;gameType:HistorianGameType;ranking:HistorianRanking;windowYears:number|null;minimumGames:number|null};
+export const historianPopulations=["all","active_every_season"] as const;
+export type HistorianPopulation=(typeof historianPopulations)[number];
+export const historianOutputs=["single","list"] as const;
+export type HistorianOutput=(typeof historianOutputs)[number];
+export type HistorianPlan={intent:HistorianIntent;memberIds:string[];startYear:number|null;endYear:number|null;metric:HistorianMetric|null;gameType:HistorianGameType;ranking:HistorianRanking;windowYears:number|null;minimumGames:number|null;population:HistorianPopulation;output:HistorianOutput;limit:number|null};
 
 const pct=(value:number|null)=>value===null?"—":`${(value*100).toFixed(1)}%`;
 const record=(wins:number,losses:number,ties:number)=>`${wins}-${losses}${ties?`-${ties}`:""}`;
@@ -62,11 +66,17 @@ const metricLabel:Record<HistorianMetric,string>={win_percentage:"win percentage
 
 function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse{
   if(!plan.metric)return unsupportedAnswer();
+  const metric=plan.metric;
   const managerIds=plan.memberIds.length?new Set(plan.memberIds):null;
   const filtered=corpus.games.filter(game=>(!managerIds||managerIds.has(game.memberId))&&(plan.gameType==="all"||(plan.gameType==="playoffs")===game.playoff)&&(plan.startYear===null||game.year>=plan.startYear)&&(plan.endYear===null||game.year<=plan.endYear));
   const minYear=plan.startYear??Math.min(...filtered.map(game=>game.year)); const maxYear=plan.endYear??Math.max(...filtered.map(game=>game.year));
   if(!filtered.length||!Number.isFinite(minYear)||!Number.isFinite(maxYear))return {answer:"No completed games match those filters.",facts:["The historian will not estimate missing results."]};
-  const rows:RankedMetricRow[]=[]; const candidates=corpus.managers.filter(manager=>!managerIds||managerIds.has(manager.memberId));
+  const requestedYears=Array.from({length:maxYear-minYear+1},(_,index)=>minYear+index);
+  const participatesEverySeason=(memberId:string)=>requestedYears.every(year=>
+    corpus.seasons.some(season=>season.memberId===memberId&&season.year===year)||
+    corpus.games.some(game=>game.memberId===memberId&&game.year===year)
+  );
+  const rows:RankedMetricRow[]=[]; const candidates=corpus.managers.filter(manager=>(!managerIds||managerIds.has(manager.memberId))&&(plan.population!=="active_every_season"||participatesEverySeason(manager.memberId)));
   for(const manager of candidates){
     const managerGames=filtered.filter(game=>game.memberId===manager.memberId); const managerYears=managerGames.map(game=>game.year);
     const windows=plan.windowYears===null?(managerYears.length?[[Math.min(...managerYears),Math.max(...managerYears)]]:[]):Array.from({length:Math.max(0,maxYear-minYear-plan.windowYears+2)},(_,index)=>[minYear+index,minYear+index+plan.windowYears!-1]);
@@ -78,12 +88,25 @@ function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):Historian
       const wins=games.filter(game=>game.result==="win").length; const losses=games.filter(game=>game.result==="loss").length; const ties=games.length-wins-losses;
       const points=games.reduce((sum,game)=>sum+game.points,0); const opponentPoints=games.reduce((sum,game)=>sum+game.opponentPoints,0);
       const values:Record<HistorianMetric,number>={win_percentage:(wins+ties*.5)/games.length,points_per_game:points/games.length,points_against_per_game:opponentPoints/games.length,average_margin:(points-opponentPoints)/games.length,total_points:points,games_played:games.length,wins};
-      rows.push({manager,startYear,endYear,games:games.length,wins,losses,ties,points,opponentPoints,value:values[plan.metric]});
+      rows.push({manager,startYear,endYear,games:games.length,wins,losses,ties,points,opponentPoints,value:values[metric]});
     }
   }
   rows.sort((a,b)=>(plan.ranking==="highest"?b.value-a.value:a.value-b.value)||b.games-a.games||a.startYear-b.startYear);
   const winner=rows[0]; if(!winner)return {answer:"No manager met the requested sample and season requirements.",facts:["Try a wider date range or a smaller minimum-games requirement."]};
   const phase=plan.gameType==="regular_season"?"regular-season":plan.gameType==="playoffs"?"playoff":"combined";
+  if(plan.output==="list"){
+    const bestByManager=new Map<string,RankedMetricRow>();
+    for(const row of rows)if(!bestByManager.has(row.manager.memberId))bestByManager.set(row.manager.memberId,row);
+    const listed=[...bestByManager.values()].slice(0,plan.limit??bestByManager.size);
+    const formatValue=(row:RankedMetricRow)=>metric==="win_percentage"?pct(row.value):metric==="games_played"||metric==="wins"?String(row.value):row.value.toFixed(2);
+    const period=minYear===maxYear?String(minYear):`${minYear}–${maxYear}`;
+    return {
+      answer:`Here are the ${phase} results for ${period}, ranked from ${plan.ranking} to ${plan.ranking==="highest"?"lowest":"highest"} ${metricLabel[metric]}.`,
+      facts:listed.map((row,index)=>`${index+1}. ${row.manager.teamName} — ${record(row.wins,row.losses,row.ties)} (${pct((row.wins+row.ties*.5)/row.games)}), ${formatValue(row)} ${metricLabel[metric]}`),
+      href:"/museum/managers",
+      hrefLabel:"View manager rankings"
+    };
+  }
   const period=winner.startYear===winner.endYear?String(winner.startYear):`${winner.startYear}–${winner.endYear}`;
   const formatted=plan.metric==="win_percentage"?pct(winner.value):plan.metric==="games_played"||plan.metric==="wins"?String(winner.value):winner.value.toFixed(2);
   return {answer:`${winner.manager.teamName} has the ${plan.ranking} ${phase} ${metricLabel[plan.metric]}${plan.windowYears?` over a ${plan.windowYears}-season stretch`:""}: ${formatted} in ${period}.`,facts:[`${record(winner.wins,winner.losses,winner.ties)} across ${winner.games} games`,`${winner.points.toFixed(2)} points for · ${winner.opponentPoints.toFixed(2)} against`,plan.metric==="points_per_game"?"Formula: total points ÷ games played":plan.metric==="win_percentage"?"Formula: (wins + ½ ties) ÷ games played":`Ranked by ${metricLabel[plan.metric]}`],href:`/museum/managers/${winner.manager.memberId}`,hrefLabel:"Open the career exhibit"};
@@ -91,6 +114,8 @@ function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):Historian
 
 function managerCareerAnswer(manager:HistorianManager):HistorianResponse{return {answer:`${manager.teamName} is ${record(manager.wins,manager.losses,manager.ties)} all-time with a ${pct(manager.winPercentage)} regular-season win rate, ${manager.championships} championship${manager.championships===1?"":"s"}, and ${manager.playoffAppearances} playoff appearances.`,facts:[`${manager.pointsFor.toFixed(1)} career regular-season points`,`${manager.playoffWins}-${manager.playoffLosses} playoff record`],href:`/museum/managers/${manager.memberId}`,hrefLabel:"Open the career exhibit"};}
 function unsupportedAnswer():HistorianResponse{return {answer:"I can answer grounded questions about championships, manager records, win percentages, playoff résumés, rivalries, season standings, and weekly scoring records. Name a manager, team, rival pair, or season to narrow the result.",facts:["Try: Who won in 2021?","Try: What is Zack's record since 2022?","Try: Who has the highest weekly score?"]};}
+
+export function historianPlanningFailure():HistorianResponse{return {answer:"I couldn't translate that question into a safe JBL statistics query. Try rephrasing it with the metric, season range, and whether you want one leader or a full list.",facts:["No substitute statistic was returned.","Example: List every manager's regular-season record from 2022 through 2025."],href:"/museum/historian",hrefLabel:"Ask another question"};}
 
 export function answerHistorian(rawQuestion:string,corpus:HistorianCorpus):HistorianResponse {
   const q=rawQuestion.toLowerCase().replace(/[^a-z0-9% ]/g," ").replace(/\s+/g," ").trim();

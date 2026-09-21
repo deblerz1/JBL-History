@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { clearLeagueSession, credentialsMatch, isLeagueSessionValid, setLeagueSession } from "@/lib/auth/session";
 import { getHistorianCorpus } from "@/lib/data/museum";
-import { answerHistorian,answerHistorianPlan,type HistorianResponse } from "@/lib/historian";
+import { answerHistorianPlan,historianPlanningFailure,type HistorianResponse } from "@/lib/historian";
 import { interpretHistorianQuestion } from "@/lib/historian-llm";
 
 export type LoginState = { error?: string };
@@ -29,5 +29,5 @@ export async function askHistorian(question:string):Promise<HistorianResponse> {
   if(!clean||clean.length>240) return {answer:"Ask one statistical question in 240 characters or fewer.",facts:[]};
   const corpus=await getHistorianCorpus();
   const plan=await interpretHistorianQuestion(clean,corpus);
-  return plan?answerHistorianPlan(plan,corpus):answerHistorian(clean,corpus);
+  return plan?answerHistorianPlan(plan,corpus):historianPlanningFailure();
 }
