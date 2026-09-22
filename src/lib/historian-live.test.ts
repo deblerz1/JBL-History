@@ -12,7 +12,8 @@ const corpus:HistorianCorpus={
   managers:[["z","Zach","Team Alpha"],["f","Foz","Team Bravo"],["p","Jack P","Team Charlie"],["v","Jack V","Team Delta"]].map(([memberId,publicName,teamName])=>({memberId,publicName,teamName,championships:0,wins:0,losses:0,ties:0,winPercentage:null,playoffAppearances:0,playoffWins:0,playoffLosses:0,playoffWinPercentage:null,pointsFor:0})),
   seasons:[],games:[],records:[],champions:[],rivalries:[],
 };
-const selected=historianQuestions.filter(testCase=>!process.env.JBL_EVAL_CATEGORY||testCase.category===process.env.JBL_EVAL_CATEGORY).slice(0,limit);
+const category=process.env.JBL_EVAL_CATEGORY;
+const selected=historianQuestions.filter(testCase=>category==="remaining"?!["manager","metric","rolling"].includes(testCase.category):!category||testCase.category===category).slice(0,limit);
 if(enabled&&!selected.length)throw new Error("No cases match JBL_EVAL_CATEGORY.");
 
 describe.skipIf(!enabled)("Live Historian planner acceptance (paid, opt-in)",()=>{

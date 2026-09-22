@@ -9,6 +9,7 @@ on:
         default: all
         options:
           - all
+          - remaining
           - manager
           - metric
           - rolling
@@ -32,7 +33,7 @@ concurrency:
 jobs:
   evaluate:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 12
     steps:
       - name: Check out JBL History
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
@@ -46,13 +47,13 @@ jobs:
             exit 1
           fi
       - run: npm ci
-      - name: Evaluate up to ten questions
+      - name: Evaluate selected questions
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-luna' }}
           JBL_LIVE_EVAL: '1'
-          JBL_EVAL_LIMIT: '10'
-          JBL_EVAL_CATEGORY: ${{ github.event_name == 'push' && 'rolling' || inputs.category != 'all' && inputs.category || '' }}
+          JBL_EVAL_LIMIT: ${{ (github.event_name == 'push' || inputs.category == 'remaining') && '50' || '10' }}
+          JBL_EVAL_CATEGORY: ${{ github.event_name == 'push' && 'remaining' || inputs.category != 'all' && inputs.category || '' }}
         run: npm test -- src/lib/historian-live.test.ts
       - name: Summarize run
         if: always()
@@ -60,4 +61,4 @@ jobs:
           RESULT: ${{ job.status }}
         run: |
           echo "Live evaluation job: $RESULT" >> "$GITHUB_STEP_SUMMARY"
-          echo 'At most 10 requests, synthetic identities only, no database access. Inspect test output for failed question IDs. Request limits are not dollar spending caps.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'At most 50 requests for remaining categories, otherwise 10; synthetic identities only, no database access. Inspect test output for failed question IDs. Request limits are not dollar spending caps.' >> "$GITHUB_STEP_SUMMARY"
