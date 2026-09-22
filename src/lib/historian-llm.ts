@@ -64,6 +64,12 @@ export async function interpretHistorianQuestion(question:string,corpus:Historia
     question:context.question,
     plan:context.plan?validatePlan(context.plan,corpus,()=>{}):null,
   }:null;
+  // Legacy record intents leave metric=null. Give follow-up planning a concrete
+  // analytical meaning instead of asking the model to recover it from wording.
+  if(previous?.plan&&["manager_record","manager_playoffs"].includes(previous.plan.intent)){
+    const phase=previous.plan.intent==="manager_playoffs"?"playoffs":previous.plan.gameType;
+    previous.plan={...previous.plan,intent:"rank_metric",metric:"wins",gameType:phase};
+  }
   const currentYear=new Date().getUTCFullYear();
   const managers=corpus.managers.map(manager=>({id:manager.memberId,publicName:manager.publicName,currentTeam:manager.teamName,historicalTeams:[...new Set(corpus.seasons.filter(season=>season.memberId===manager.memberId).map(season=>season.teamName))]}));
   const body={model:process.env.OPENAI_MODEL||"gpt-5.6-luna",store:false,input:[
