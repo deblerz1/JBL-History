@@ -27,7 +27,12 @@
 - Verify live multi-turn behavior before extending memory beyond one turn.
 - Conversation context is untrusted input, revalidated on the server; calculations remain deterministic.
 
-## Luck analysis (planned)
+## Luck analysis
+- Implemented: expected wins, schedule luck, luck per game; regular season only.
+- Luckiest/unluckiest select highest/lowest schedule luck, with dates/windows/sample filters.
+- Weekly league population is checked before manager filtering; incomplete/duplicate,
+  unmapped, non-finite, nonreciprocal and multiweek groups are excluded and disclosed.
+- Matchup history now uses ordered pagination rather than a fixed 1,000-row limit.
 - Completed data audit: see `historian-data-audit.md`. All completed regular-season
   weeks have complete team coverage; lineup anomalies do not block team-score luck.
 - Ask which definition, or offer a clearly labeled default: schedule luck.
@@ -36,7 +41,7 @@
 - Show lowest points against per game, close-game results, sample size and coverage as supporting statistics.
 - Separate manager-season identity from career identity. Count only complete comparable scoring weeks;
   exclude byes and incomplete games; do not treat two-week playoff totals as single weeks.
-- Requires week-level game keys and runtime completeness gates; initial audit passed.
+- Week-level game keys and runtime completeness gates implemented; initial audit passed.
 - Explain that scoring settings, schedule and season lengths affect comparisons.
 
 ## Best manager (planned)

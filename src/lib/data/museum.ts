@@ -19,17 +19,28 @@ async function identityMap(supabase: ReturnType<typeof createServerSupabaseClien
   return new Map(data.map((row) => [row.member_id, row.public_name]));
 }
 
+async function historianMatchups(supabase:ReturnType<typeof createServerSupabaseClient>){
+  const page=(offset:number)=>supabase.from("matchups").select("id,season_id,matchup_period,home_team_id,away_team_id,home_score,away_score,winner_team_id").eq("is_complete",true).not("home_score","is",null).not("away_score","is",null).order("id").range(offset,offset+499);
+  const first=await page(0);
+  if(first.error)return first;
+  const rows=[...first.data];
+  let size=first.data.length;
+  while(size===500){const next=await page(rows.length);if(next.error)return next;rows.push(...next.data);size=next.data.length;}
+  return {...first,data:rows};
+}
+
 export async function getHistorianCorpus():Promise<HistorianCorpus> {
   const supabase=createServerSupabaseClient();
-  const [managersResult,championsResult,rivalriesResult,recordsResult,seasonsResult,matchupsResult,configResult,playoffsResult,identities]=await Promise.all([
+  const [managersResult,championsResult,rivalriesResult,recordsResult,seasonsResult,matchupsResult,configResult,playoffsResult,identities,settingsResult]=await Promise.all([
     supabase.from("analytics_manager_careers").select("member_id,current_team_name,championships,regular_season_wins,regular_season_losses,regular_season_ties,regular_season_win_percentage,playoff_appearances,playoff_wins,playoff_losses,playoff_win_percentage,regular_season_points_for"),
     supabase.from("analytics_champions").select("year,member_id,team_name,runner_up_team_name,champion_score,runner_up_score"),
     supabase.from("analytics_head_to_head").select("member_a_id,member_b_id,member_a_team_name,member_b_team_name,games,member_a_wins,member_b_wins,ties"),
     supabase.from("analytics_league_records").select("record_type,record_rank,year,matchup_period,member_id,team_name,opponent_team_name,record_value").lte("record_rank",10),
     supabase.from("analytics_season_standings").select("season_id,season_team_id,year,member_id,team_name,wins,losses,ties,points_for,final_standing"),
-    supabase.from("matchups").select("id,season_id,matchup_period,home_team_id,away_team_id,home_score,away_score,winner_team_id").eq("is_complete",true).not("home_score","is",null).not("away_score","is",null).limit(1000),
+    historianMatchups(supabase),
     supabase.from("analytics_season_config").select("season_id,regular_season_periods"),
     supabase.from("analytics_playoff_games").select("matchup_id"),identityMap(supabase),
+    supabase.from("scoring_settings").select("season_id,settings"),
   ]);
   if(managersResult.error) throw new Error(`Historian managers query failed: ${managersResult.error.message}`);
   if(championsResult.error) throw new Error(`Historian champions query failed: ${championsResult.error.message}`);
@@ -39,15 +50,19 @@ export async function getHistorianCorpus():Promise<HistorianCorpus> {
   if(matchupsResult.error) throw new Error(`Historian games query failed: ${matchupsResult.error.message}`);
   if(configResult.error) throw new Error(`Historian schedule query failed: ${configResult.error.message}`);
   if(playoffsResult.error) throw new Error(`Historian playoffs query failed: ${playoffsResult.error.message}`);
+  if(settingsResult.error) throw new Error(`Historian scoring periods query failed: ${settingsResult.error.message}`);
+  const schedules=new Map(settingsResult.data.map(row=>[row.season_id,row.settings?.scheduleSettings?.matchupPeriods]));
   const teams=new Map(seasonsResult.data.map(row=>[row.season_team_id,row]));
   const regularPeriods=new Map(configResult.data.map(row=>[row.season_id,Number(row.regular_season_periods)])); const playoffIds=new Set(playoffsResult.data.map(row=>row.matchup_id));
   const games=matchupsResult.data.flatMap(matchup=>{
     const home=teams.get(matchup.home_team_id); const away=teams.get(matchup.away_team_id); if(!home||!away)return [];
     const playoff=playoffIds.has(matchup.id); const regular=Number(matchup.matchup_period)<=Number(regularPeriods.get(matchup.season_id)); if(!regular&&!playoff)return [];
     const result=(teamId:string):"win"|"loss"|"tie"=>matchup.winner_team_id===null?"tie":matchup.winner_team_id===teamId?"win":"loss";
+    const periods=schedules.get(matchup.season_id)?.[String(matchup.matchup_period)];
+    const metadata={week:Array.isArray(periods)&&periods.length===1?Number(periods[0]):undefined,scoringPeriodCount:Array.isArray(periods)?periods.length:undefined};
     return [
-      {year:Number(home.year),memberId:home.member_id,opponentMemberId:away.member_id,teamName:home.team_name,playoff,points:Number(matchup.home_score),opponentPoints:Number(matchup.away_score),result:result(matchup.home_team_id)},
-      {year:Number(away.year),memberId:away.member_id,opponentMemberId:home.member_id,teamName:away.team_name,playoff,points:Number(matchup.away_score),opponentPoints:Number(matchup.home_score),result:result(matchup.away_team_id)},
+      {...metadata,year:Number(home.year),memberId:home.member_id,opponentMemberId:away.member_id,teamName:home.team_name,playoff,points:Number(matchup.home_score),opponentPoints:Number(matchup.away_score),result:result(matchup.home_team_id)},
+      {...metadata,year:Number(away.year),memberId:away.member_id,opponentMemberId:home.member_id,teamName:away.team_name,playoff,points:Number(matchup.away_score),opponentPoints:Number(matchup.home_score),result:result(matchup.away_team_id)},
     ];
   });
   return {

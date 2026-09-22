@@ -1,13 +1,20 @@
 // A bounded expression language: the model selects a metric; only code defines
 // arithmetic. Definitions drive both planner documentation and execution.
-export type GameTotals={games:number;wins:number;losses:number;ties:number;points:number;opponentPoints:number};
+export type GameTotals={games:number;wins:number;losses:number;ties:number;points:number;opponentPoints:number;expectedWins?:number};
 type Expression={field:keyof GameTotals}|{constant:number}|{op:"add"|"subtract"|"multiply"|"divide";left:Expression;right:Expression};
 type MetricDefinition={label:string;formula:string;format:"percent"|"integer"|"decimal";expression:Expression;note?:string};
 const field=(field:keyof GameTotals):Expression=>({field});
 const binary=(op:"add"|"subtract"|"multiply"|"divide",left:Expression,right:Expression):Expression=>({op,left,right});
 const ratio=(left:keyof GameTotals,right:keyof GameTotals)=>binary("divide",field(left),field(right));
 const scoringNote="Scoring balance is not a pure luck measure: both your scoring and opponents' scoring affect this ratio.";
+const actualWins=binary("add",field("wins"),binary("multiply",field("ties"),{constant:.5}));
+const luck=binary("subtract",actualWins,field("expectedWins"));
+const luckNote="Schedule luck compares results with weekly scoring rank against every other team. Positive means more wins than expected; negative means fewer. It does not measure injuries or every kind of luck.";
+export const luckMetrics=new Set<string>(["expected_wins","schedule_luck","schedule_luck_per_game"]);
 export const metricDefinitions={
+  expected_wins:{label:"expected wins",formula:"sum of weekly (other teams outscored + ½ tied) ÷ number of other teams",format:"decimal",expression:field("expectedWins"),note:luckNote},
+  schedule_luck:{label:"schedule luck (wins above expected)",formula:"wins + ½ ties − expected wins",format:"decimal",expression:luck,note:luckNote},
+  schedule_luck_per_game:{label:"schedule luck per game",formula:"(wins + ½ ties − expected wins) ÷ completed games",format:"decimal",expression:binary("divide",luck,field("games")),note:luckNote},
   win_percentage:{label:"win percentage",formula:"(wins + ½ ties) ÷ games played",format:"percent",expression:binary("divide",binary("add",field("wins"),binary("multiply",field("ties"),{constant:.5})),field("games"))},
   points_per_game:{label:"points per game",formula:"total points ÷ games played",format:"decimal",expression:ratio("points","games")},
   points_against_per_game:{label:"points allowed per game",formula:"total points against ÷ games played",format:"decimal",expression:ratio("opponentPoints","games")},
@@ -24,7 +31,7 @@ export const metricDefinitions={
 export type HistorianMetric=keyof typeof metricDefinitions;
 export const historianMetrics=Object.keys(metricDefinitions) as HistorianMetric[];
 function evaluate(expression:Expression,totals:GameTotals):number|null{
-  if("field" in expression)return Number.isFinite(totals[expression.field])?totals[expression.field]:null;
+  if("field" in expression){const value=totals[expression.field];return typeof value==="number"&&Number.isFinite(value)?value:null;}
   if("constant" in expression)return expression.constant;
   const left=evaluate(expression.left,totals),right=evaluate(expression.right,totals);
   if(left===null||right===null||(expression.op==="divide"&&right===0))return null;

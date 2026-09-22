@@ -1,11 +1,12 @@
-import {calculateMetric,formatMetric,metricDefinition,type HistorianMetric} from "./historian-metrics";
+import {prepareLuckGames} from "./historian-luck";
+import {calculateMetric,formatMetric,metricDefinition,luckMetrics,type HistorianMetric} from "./historian-metrics";
 export {historianMetrics,type HistorianMetric} from "./historian-metrics";
 export type HistorianManager={memberId:string;teamName:string;publicName:string|null;championships:number;wins:number;losses:number;ties:number;winPercentage:number|null;playoffAppearances:number;playoffWins:number;playoffLosses:number;playoffWinPercentage:number|null;pointsFor:number};
 export type HistorianChampion={year:number;memberId:string;teamName:string;publicName:string|null;runnerUp:string;score:number;runnerUpScore:number};
 export type HistorianRivalry={memberAId:string;memberBId:string;memberATeamName:string;memberBTeamName:string;memberAPublicName:string|null;memberBPublicName:string|null;games:number;memberAWins:number;memberBWins:number;ties:number};
 export type HistorianRecord={type:string;rank:number;year:number;week:number;memberId:string;teamName:string;publicName:string|null;opponent:string;value:number};
 export type HistorianSeason={year:number;memberId:string;teamName:string;wins:number;losses:number;ties:number;pointsFor:number;finalStanding:number|null};
-export type HistorianGame={year:number;memberId:string;opponentMemberId?:string;teamName:string;playoff:boolean;points:number;opponentPoints:number;result:"win"|"loss"|"tie"};
+export type HistorianGame={week?:number;scoringPeriodCount?:number;expectedWins?:number;year:number;memberId:string;opponentMemberId?:string;teamName:string;playoff:boolean;points:number;opponentPoints:number;result:"win"|"loss"|"tie"};
 export type HistorianCorpus={managers:HistorianManager[];champions:HistorianChampion[];rivalries:HistorianRivalry[];records:HistorianRecord[];seasons:HistorianSeason[];games:HistorianGame[]};
 export type HistorianContext={question:string;plan:HistorianPlan|null};
 export type HistorianResponse={context?:HistorianContext;interpretation?:string;notes?:string[];answer:string;facts:string[];table?:{caption:string;columns:string[];rows:string[][]};href?:string;hrefLabel?:string};
@@ -140,17 +141,21 @@ export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):H
   return unsupportedAnswer();
 }
 
-type RankedMetricRow={manager:HistorianManager;startYear:number;endYear:number;games:number;wins:number;losses:number;ties:number;points:number;opponentPoints:number;value:number};
+type RankedMetricRow={manager:HistorianManager;startYear:number;endYear:number;games:number;wins:number;losses:number;ties:number;points:number;opponentPoints:number;expectedWins:number;value:number};
 
 function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse{
   if(!plan.metric)return unsupportedAnswer();
   const metric=plan.metric;
   const definition=metricDefinition(metric);
   let undefinedRows=0;
+  const isLuck=luckMetrics.has(metric);
+  if(isLuck&&plan.gameType!=="regular_season")return {answer:"Schedule luck currently supports regular-season games only.",facts:["Playoff brackets and multi-week matchups need a separate comparison definition."]};
+  const luckData=isLuck?prepareLuckGames(corpus,plan.startYear,plan.endYear):null;
+  const coverage=luckData?[`${luckData.completeWeeks} complete league weeks available; ${luckData.excluded.length} incomplete or invalid weeks excluded.`,...(luckData.excluded.length?[`Excluded: ${luckData.excluded.join(", ")}`]:[]),"Unplayed weeks are not counted. Results cover only completed, verified weeks."]:[];
   const managerIds=plan.memberIds.length?new Set(plan.memberIds):null;
-  const filtered=corpus.games.filter(game=>(!managerIds||managerIds.has(game.memberId))&&(plan.gameType==="all"||(plan.gameType==="playoffs")===game.playoff)&&(plan.startYear===null||game.year>=plan.startYear)&&(plan.endYear===null||game.year<=plan.endYear));
+  const filtered=(luckData?.games??corpus.games).filter(game=>(!managerIds||managerIds.has(game.memberId))&&(plan.gameType==="all"||(plan.gameType==="playoffs")===game.playoff)&&(plan.startYear===null||game.year>=plan.startYear)&&(plan.endYear===null||game.year<=plan.endYear));
   const minYear=plan.startYear??Math.min(...filtered.map(game=>game.year)); const maxYear=plan.endYear??Math.max(...filtered.map(game=>game.year));
-  if(!filtered.length||!Number.isFinite(minYear)||!Number.isFinite(maxYear))return {answer:"No completed games match those filters.",facts:["The historian will not estimate missing results."]};
+  if(!filtered.length||!Number.isFinite(minYear)||!Number.isFinite(maxYear))return {answer:"No completed games match those filters.",facts:["The historian will not estimate missing results.",...coverage]};
   const requestedYears=Array.from({length:maxYear-minYear+1},(_,index)=>minYear+index);
   const participatesEverySeason=(memberId:string)=>requestedYears.every(year=>
     corpus.seasons.some(season=>season.memberId===memberId&&season.year===year)||
@@ -167,13 +172,13 @@ function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):Historian
       const minimumGames=plan.minimumGames??1; if(games.length<minimumGames)continue;
       const wins=games.filter(game=>game.result==="win").length; const losses=games.filter(game=>game.result==="loss").length; const ties=games.length-wins-losses;
       const points=games.reduce((sum,game)=>sum+game.points,0); const opponentPoints=games.reduce((sum,game)=>sum+game.opponentPoints,0);
-      const value=calculateMetric(metric,{wins,losses,ties,points,opponentPoints,games:games.length});
+      const value=calculateMetric(metric,{wins,losses,ties,points,opponentPoints,games:games.length,expectedWins:isLuck?games.reduce((sum,g)=>sum+(g.expectedWins??0),0):undefined});
       if(value===null){undefinedRows++;continue;}
-      rows.push({manager,startYear,endYear,games:games.length,wins,losses,ties,points,opponentPoints,value});
+      rows.push({manager,startYear,endYear,games:games.length,wins,losses,ties,points,opponentPoints,expectedWins:games.reduce((sum,g)=>sum+(g.expectedWins??0),0),value});
     }
   }
   rows.sort((a,b)=>(plan.ranking==="highest"?b.value-a.value:a.value-b.value)||b.games-a.games||a.startYear-b.startYear);
-  const notes=[`Formula: ${definition.formula}`,...(definition.note?[definition.note]:[]),...(undefinedRows?[`${undefinedRows} manager/window results excluded because the formula was undefined (such as a zero denominator).`]:[]),...(plan.gameType!=="regular_season"?["Games are completed matchups; a multi-week playoff matchup counts as one game. Consolation games excluded."]:[])];
+  const notes=[...coverage,`Formula: ${definition.formula}`,...(definition.note?[definition.note]:[]),...(undefinedRows?[`${undefinedRows} manager/window results excluded because the formula was undefined (such as a zero denominator).`]:[]),...(plan.gameType!=="regular_season"?["Games are completed matchups; a multi-week playoff matchup counts as one game. Consolation games excluded."]:[])];
   const winner=rows[0]; if(!winner)return {answer:undefinedRows?"This statistic is undefined for the matching results; no ranking was assigned.":"No manager met the requested sample and season requirements.",facts:undefinedRows?notes:["Try a wider date range or a smaller minimum-games requirement."]};
   const phase=plan.gameType==="regular_season"?"regular-season":plan.gameType==="playoffs"?"playoff":"combined";
   if(plan.output==="list"){
@@ -185,8 +190,8 @@ function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):Historian
     return {
       answer:`Here are the ${phase} results for ${period}, ranked from ${plan.ranking} to ${plan.ranking==="highest"?"lowest":"highest"} ${definition.label}${plan.windowYears?`, using each manager's ${plan.ranking==="highest"?"best":"worst"} ${plan.windowYears}-season stretch`:""}.`,
       facts:[...listed.map((row,index)=>`${index+1}. ${row.manager.teamName} — ${record(row.wins,row.losses,row.ties)} (${pct((row.wins+row.ties*.5)/row.games)}), ${formatValue(row)} ${definition.label}`),...notes],
-      table:{caption:`${phase} results · ${period}`,columns:["Team","Seasons","Record","Win %",definition.label],rows:listed.map(row=>[
-        row.manager.teamName,`${row.startYear}–${row.endYear}`,record(row.wins,row.losses,row.ties),pct((row.wins+row.ties*.5)/row.games),formatValue(row),
+      table:{caption:`${phase} results · ${period}`,columns:["Team","Seasons","Record","Win %",definition.label,...(isLuck?["Expected wins"]:[])],rows:listed.map(row=>[
+        row.manager.teamName,`${row.startYear}–${row.endYear}`,record(row.wins,row.losses,row.ties),pct((row.wins+row.ties*.5)/row.games),formatValue(row),...(isLuck?[row.expectedWins.toFixed(2)]:[]),
       ])},
       href:"/museum/managers",
       notes,
@@ -196,7 +201,7 @@ function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):Historian
   const period=winner.startYear===winner.endYear?String(winner.startYear):`${winner.startYear}–${winner.endYear}`;
   const formatted=formatMetric(metric,winner.value);
   const tied=rows.filter(row=>Math.abs(row.value-winner.value)<1e-12);
-  return {answer:`${winner.manager.teamName} has ${plan.memberIds.length===1&&!plan.windowYears?"a":`the ${plan.ranking}`} ${phase} ${definition.label}${plan.windowYears?` over a ${plan.windowYears}-season stretch`:""}: ${formatted} in ${period}.`,facts:[`${record(winner.wins,winner.losses,winner.ties)} across ${winner.games} games`,`${winner.points.toFixed(2)} points for · ${winner.opponentPoints.toFixed(2)} against`,...notes,...(tied.length>1?[`Tied at this value: ${tied.map(row=>`${row.manager.teamName} (${row.startYear}–${row.endYear})`).join(", ")}. Display order favors more games, then earlier seasons; this does not break the statistical tie.`]:[])],href:`/museum/managers/${winner.manager.memberId}`,hrefLabel:"Open the career exhibit"};
+  return {answer:`${winner.manager.teamName} has ${plan.memberIds.length===1&&!plan.windowYears?"a":`the ${plan.ranking}`} ${phase} ${definition.label}${plan.windowYears?` over a ${plan.windowYears}-season stretch`:""}: ${formatted} in ${period}.`,facts:[`${record(winner.wins,winner.losses,winner.ties)} across ${winner.games} games`,`${winner.points.toFixed(2)} points for · ${winner.opponentPoints.toFixed(2)} against`,...(isLuck?[`${winner.expectedWins.toFixed(2)} expected wins versus ${(winner.wins+winner.ties*.5).toFixed(2)} actual wins (ties count as half).`]:[]),...notes,...(tied.length>1?[`Tied at this value: ${tied.map(row=>`${row.manager.teamName} (${row.startYear}–${row.endYear})`).join(", ")}. Display order favors more games, then earlier seasons; this does not break the statistical tie.`]:[])],href:`/museum/managers/${winner.manager.memberId}`,hrefLabel:"Open the career exhibit"};
 }
 
 function managerCareerAnswer(manager:HistorianManager):HistorianResponse{return {answer:`${manager.teamName} is ${record(manager.wins,manager.losses,manager.ties)} all-time with a ${pct(manager.winPercentage)} regular-season win rate, ${manager.championships} championship${manager.championships===1?"":"s"}, and ${manager.playoffAppearances} playoff appearances.`,facts:[`${manager.pointsFor.toFixed(1)} career regular-season points`,`${manager.playoffWins}-${manager.playoffLosses} playoff record`],href:`/museum/managers/${manager.memberId}`,hrefLabel:"Open the career exhibit"};}

@@ -67,4 +67,4 @@ jobs:
           RESULT: ${{ job.status }}
         run: |
           echo "Live evaluation job: $RESULT" >> "$GITHUB_STEP_SUMMARY"
-          echo 'Push/analytics: at most 9 requests for metric composition and follow-ups. Remaining category: at most 50; other categories: at most 10. Synthetic identities only, no database access. Request limits are not dollar spending caps.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Push/analytics: at most 12 requests for metric composition, schedule luck and follow-ups. Remaining category: at most 50; other categories: at most 10. Synthetic identities only, no database access. Request limits are not dollar spending caps.' >> "$GITHUB_STEP_SUMMARY"

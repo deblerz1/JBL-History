@@ -3,8 +3,11 @@ import type {HistorianCorpus,HistorianPlan} from "./historian";
 vi.mock("server-only",()=>({}));
 import {interpretHistorianQuestion} from "./historian-llm";
 const corpus:HistorianCorpus={managers:[],seasons:[],games:[],champions:[],rivalries:[],records:[]};
-describe.skipIf(process.env.JBL_LIVE_EVAL!=="1")("Live composable metrics (6 requests, opt-in)",()=>{
+describe.skipIf(process.env.JBL_LIVE_EVAL!=="1")("Live composable metrics (9 requests, opt-in)",()=>{
   it.each([
+    ["Who has been the luckiest from 2022 through 2025?",{metric:"schedule_luck",gameType:"regular_season",ranking:"highest",startYear:2022,endYear:2025}],
+    ["List the unluckiest managers per game since 2022.",{metric:"schedule_luck_per_game",gameType:"regular_season",ranking:"lowest",startYear:2022,output:"list"}],
+    ["Who had the most expected wins over a two-year stretch from 2022–2025?",{metric:"expected_wins",gameType:"regular_season",windowYears:2,startYear:2022,endYear:2025}],
     ["Who is best in playoffs?",{metric:"win_percentage",gameType:"playoffs",ranking:"highest"}],
     ["Who has the most playoff points against from 2022 through 2025?",{metric:"total_points_against",gameType:"playoffs",startYear:2022,endYear:2025}],
     ["List everyone's PA/PF ratio in the regular season from 2022–2025, lowest first, minimum 20 games.",{metric:"points_against_to_points_for",gameType:"regular_season",startYear:2022,endYear:2025,ranking:"lowest",minimumGames:20,output:"list"}],
