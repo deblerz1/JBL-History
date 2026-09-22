@@ -52,7 +52,7 @@ jobs:
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-luna' }}
           JBL_LIVE_EVAL: '1'
           JBL_EVAL_LIMIT: '10'
-          JBL_EVAL_CATEGORY: ${{ inputs.category != 'all' && inputs.category || '' }}
+          JBL_EVAL_CATEGORY: ${{ github.event_name == 'push' && 'rolling' || inputs.category != 'all' && inputs.category || '' }}
         run: npm test -- src/lib/historian-live.test.ts
       - name: Summarize run
         if: always()
