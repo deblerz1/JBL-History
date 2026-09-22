@@ -29,6 +29,35 @@ const corpus:HistorianCorpus={
 const plan=(overrides:Partial<HistorianPlan>):HistorianPlan=>({intent:"unsupported",memberIds:[],startYear:null,endYear:null,metric:null,gameType:"regular_season",ranking:"highest",windowYears:null,minimumGames:null,population:"all",output:"single",limit:null,...overrides});
 
 describe("JBL Historian",()=>{
+  it("composes playoff totals with member, date and sample filters",()=>{
+    const result=answerHistorianPlan(plan({intent:"rank_metric",metric:"total_points_against",gameType:"playoffs",startYear:2023,endYear:2023,memberIds:["a"]}),corpus);
+    expect(result.answer).toContain("130.00");
+    expect(result.answer).toContain("Alpha");
+    expect(result.facts.join(" ")).toContain("multi-week");
+    expect(answerHistorianPlan(plan({intent:"rank_metric",metric:"total_points_against",gameType:"playoffs",minimumGames:2}),corpus).answer).toContain("No manager met");
+  });
+  it("ranks aggregate ratios rather than averaging game ratios, in both directions",()=>{
+    const high=answerHistorianPlan(plan({intent:"rank_metric",metric:"points_against_to_points_for",output:"list",startYear:2021,endYear:2022}),corpus);
+    expect(high.table?.rows[0][0]).toBe("Bravo");
+    expect(high.table?.rows[0][4]).toBe("1.16");
+    expect(high.table?.rows[1][4]).toBe("0.86");
+    const low=answerHistorianPlan(plan({intent:"rank_metric",metric:"points_for_to_points_against",ranking:"lowest",startYear:2021,endYear:2022}),corpus);
+    expect(low.answer).toContain("Bravo");
+    expect(low.answer).toContain("0.86");
+    expect(high.notes?.join(" ")).toContain("not a pure luck");
+  });
+  it("supports ratios across rolling windows and requires every year",()=>{
+    const result=answerHistorianPlan(plan({intent:"rank_metric",metric:"points_for_to_points_against",windowYears:2,startYear:2021,endYear:2023}),corpus);
+    expect(result.answer).toContain("Alpha");
+    expect(result.answer).toContain("2021–2022");
+    expect(result.answer).toContain("1.16");
+  });
+  it("does not rank undefined ratios as zero or infinity",()=>{
+    const zero={...corpus,games:corpus.games.map(g=>({...g,points:0}))};
+    const result=answerHistorianPlan(plan({intent:"rank_metric",metric:"points_against_to_points_for"}),zero);
+    expect(result.answer).toContain("undefined");
+    expect(result.facts.join(" ")).toContain("zero denominator");
+  });
   const rivalryCorpus={...corpus,games:corpus.games.map(g=>({...g,opponentMemberId:g.memberId==="a"?"b":"a"}))};
   it("filters rivalries by dates and counts each meeting once",()=>{
     const result=answerHistorianPlan(plan({intent:"rivalry",memberIds:["a","b"],startYear:2022,endYear:2023}),rivalryCorpus);
