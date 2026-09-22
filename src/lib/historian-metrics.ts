@@ -44,4 +44,4 @@ export function formatMetric(metric:HistorianMetric,value:number):string{
   const format=metricDefinitions[metric].format;
   return format==="percent"?`${(value*100).toFixed(1)}%`:format==="integer"?String(value):value.toFixed(2);
 }
-export function metricPlannerCatalog():string{return Object.entries(metricDefinitions).map(([id,definition])=>`${id}: ${definition.formula}`).join("; ");}
+export function metricPlannerCatalog():string{return JSON.stringify(Object.entries(metricDefinitions).map(([id,definition])=>({metric:id,formula:definition.formula,phases:luckMetrics.has(id)?["regular_season"]:["regular_season","playoffs","all"],rollingWindows:true,managerFilters:true,lists:true})));}
