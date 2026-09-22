@@ -28,13 +28,15 @@
 - Conversation context is untrusted input, revalidated on the server; calculations remain deterministic.
 
 ## Luck analysis (planned)
+- Completed data audit: see `historian-data-audit.md`. All completed regular-season
+  weeks have complete team coverage; lineup anomalies do not block team-score luck.
 - Ask which definition, or offer a clearly labeled default: schedule luck.
 - Calculate weekly expected wins as (opponents outscored + half tied) / eligible opponents.
 - Schedule luck = actual regular-season wins minus summed weekly expected wins.
 - Show lowest points against per game, close-game results, sample size and coverage as supporting statistics.
 - Separate manager-season identity from career identity. Count only complete comparable scoring weeks;
   exclude byes and incomplete games; do not treat two-week playoff totals as single weeks.
-- Requires week-level game keys and a completeness audit before implementation.
+- Requires week-level game keys and runtime completeness gates; initial audit passed.
 - Explain that scoring settings, schedule and season lengths affect comparisons.
 
 ## Best manager (planned)
