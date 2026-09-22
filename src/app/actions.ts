@@ -2,7 +2,8 @@
 import { redirect } from "next/navigation";
 import { clearLeagueSession, credentialsMatch, isLeagueSessionValid, setLeagueSession } from "@/lib/auth/session";
 import { getHistorianCorpus } from "@/lib/data/museum";
-import { answerHistorianPlan,historianPlanningFailure,type HistorianResponse } from "@/lib/historian";
+import { answerHistorianPlan,historianPlanningFailure,type HistorianContext,type HistorianResponse } from "@/lib/historian";
+import { ambiguousManagerQuestion,describeHistorianPlan } from "@/lib/historian-conversation";
 import { interpretHistorianQuestion } from "@/lib/historian-llm";
 
 export type LoginState = { error?: string };
@@ -23,11 +24,15 @@ export async function leaveMuseum() {
   redirect("/");
 }
 
-export async function askHistorian(question:string):Promise<HistorianResponse> {
+export async function askHistorian(question:string,context?:HistorianContext):Promise<HistorianResponse> {
   if(!(await isLeagueSessionValid())) return {answer:"The archive is locked. Return to the entrance and enter the league access code.",facts:[],href:"/",hrefLabel:"Return to entrance"};
-  const clean=question.trim();
+  const clean=typeof question==="string"?question.trim():"";
   if(!clean||clean.length>240) return {answer:"Ask one statistical question in 240 characters or fewer.",facts:[]};
   const corpus=await getHistorianCorpus();
-  const plan=await interpretHistorianQuestion(clean,corpus);
-  return plan?answerHistorianPlan(plan,corpus):historianPlanningFailure();
+  const clarification=ambiguousManagerQuestion(clean,corpus);
+  if(clarification)return {answer:clarification,facts:[],context:{question:clean,plan:null}};
+  const plan=await interpretHistorianQuestion(clean,corpus,context);
+  if(!plan)return historianPlanningFailure();
+  const response=answerHistorianPlan(plan,corpus);
+  return {...response,...(plan.intent!=="unsupported"?{interpretation:describeHistorianPlan(plan,corpus),context:{question:clean,plan}}:{})};
 }
