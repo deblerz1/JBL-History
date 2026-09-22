@@ -2,6 +2,13 @@ import {afterEach,it,expect,vi} from "vitest";
 import type {HistorianCorpus} from "./historian";
 vi.mock("server-only",()=>({}));
 const corpus:HistorianCorpus={managers:[],seasons:[],games:[],champions:[],records:[],rivalries:[]};
+it("declines reversed date ranges before calling the model",async()=>{
+  const fetchMock=vi.fn();vi.stubGlobal("fetch",fetchMock);
+  vi.spyOn(console,"info").mockImplementation(()=>{});
+  const {interpretHistorianQuestion}=await import("./historian-llm");
+  expect(await interpretHistorianQuestion("What is Zach's record from 2025 to 2022?",corpus)).toMatchObject({intent:"unsupported",startYear:null,endYear:null});
+  expect(fetchMock).not.toHaveBeenCalled();
+});
 it("logs a controlled rejection reason without logging the model output",async()=>{
   const invalid={intent:"rank_metric",memberIds:[],startYear:2017,endYear:2025,metric:"win_percentage",gameType:"regular_season",ranking:"lowest",windowYears:3,minimumGames:0,population:"all",output:"single",limit:null,privateMarker:"DO_NOT_LOG"};
   vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");

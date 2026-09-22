@@ -54,7 +54,12 @@ jobs:
           JBL_LIVE_EVAL: '1'
           JBL_EVAL_LIMIT: ${{ (github.event_name == 'push' || inputs.category == 'remaining') && '50' || '10' }}
           JBL_EVAL_CATEGORY: ${{ github.event_name == 'push' && 'remaining' || inputs.category != 'all' && inputs.category || '' }}
-        run: npm test -- src/lib/historian-live.test.ts
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            npm test -- src/lib/historian-live.test.ts -t 'Q036|Q073|Q076|Q078'
+          else
+            npm test -- src/lib/historian-live.test.ts
+          fi
       - name: Summarize run
         if: always()
         env:
