@@ -1,0 +1,63 @@
+name: Historian live Luna evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      category:
+        description: Question category (all starts with manager wording cases)
+        type: choice
+        default: all
+        options:
+          - all
+          - manager
+          - metric
+          - rolling
+          - list_cohort
+          - rivalry
+          - playoffs
+          - scope
+          - clarify_or_unsupported
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/historian-live-eval.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: historian-live-eval
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out JBL History
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Verify evaluation key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo 'Add OPENAI_API_KEY to JBL-History repository Actions secrets, then run this workflow again.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Missing OPENAI_API_KEY repository secret.' >&2
+            exit 1
+          fi
+      - run: npm ci
+      - name: Evaluate up to ten questions
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-luna' }}
+          JBL_LIVE_EVAL: '1'
+          JBL_EVAL_LIMIT: '10'
+          JBL_EVAL_CATEGORY: ${{ inputs.category != 'all' && inputs.category || '' }}
+        run: npm test -- src/lib/historian-live.test.ts
+      - name: Summarize run
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          echo "Live evaluation job: $RESULT" >> "$GITHUB_STEP_SUMMARY"
+          echo 'At most 10 requests, synthetic identities only, no database access. Inspect test output for failed question IDs. Request limits are not dollar spending caps.' >> "$GITHUB_STEP_SUMMARY"
