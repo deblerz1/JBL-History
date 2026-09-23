@@ -36,10 +36,10 @@ export async function getHistorianCorpus():Promise<HistorianCorpus> {
     supabase.from("analytics_champions").select("year,member_id,team_name,runner_up_team_name,champion_score,runner_up_score"),
     supabase.from("analytics_head_to_head").select("member_a_id,member_b_id,member_a_team_name,member_b_team_name,games,member_a_wins,member_b_wins,ties"),
     supabase.from("analytics_league_records").select("record_type,record_rank,year,matchup_period,member_id,team_name,opponent_team_name,record_value").lte("record_rank",10),
-    supabase.from("analytics_season_standings").select("season_id,season_team_id,year,member_id,team_name,wins,losses,ties,points_for,final_standing"),
+    supabase.from("analytics_season_standings").select("season_id,season_team_id,year,member_id,team_name,wins,losses,ties,points_for,final_standing,playoff_seed"),
     historianMatchups(supabase),
-    supabase.from("analytics_season_config").select("season_id,regular_season_periods"),
-    supabase.from("analytics_playoff_games").select("matchup_id"),identityMap(supabase),
+    supabase.from("analytics_season_config").select("season_id,year,status,regular_season_periods,playoff_team_count,final_matchup_period"),
+    supabase.from("analytics_playoff_games").select("matchup_id,home_team_id,away_team_id"),identityMap(supabase),
     supabase.from("scoring_settings").select("season_id,settings"),
   ]);
   if(managersResult.error) throw new Error(`Historian managers query failed: ${managersResult.error.message}`);
@@ -66,11 +66,21 @@ export async function getHistorianCorpus():Promise<HistorianCorpus> {
     ];
   });
   return {
+    formats:configResult.data.map(config=>{
+      const year=Number(config.year),regularWeeks=Number(config.regular_season_periods),playoffSpots=Number(config.playoff_team_count);
+      const seasonTeams=seasonsResult.data.filter(t=>t.season_id===config.season_id);
+      const playoffParticipants=new Set(playoffsResult.data.flatMap(p=>[p.home_team_id,p.away_team_id]));
+      const roundWeeks=Array.from({length:Math.max(0,Number(config.final_matchup_period)-regularWeeks)},(_,i)=>{
+        const weeks=schedules.get(config.season_id)?.[String(regularWeeks+i+1)];return Array.isArray(weeks)?weeks.length:0;
+      });
+      const qualified=seasonTeams.filter(t=>Number(t.playoff_seed)>0&&Number(t.playoff_seed)<=playoffSpots);
+      return {year,complete:config.status==="complete",teamCount:seasonTeams.length,playoffSpots,regularWeeks,roundWeeks,byes:playoffSpots>=2?2**Math.ceil(Math.log2(playoffSpots))-playoffSpots:0,qualificationKnown:config.status==="complete"&&qualified.length===playoffSpots&&qualified.every(t=>playoffParticipants.has(t.season_team_id))};
+    }),
     managers:managersResult.data.map(r=>({memberId:r.member_id,teamName:r.current_team_name,publicName:identities.get(r.member_id)??null,championships:Number(r.championships),wins:Number(r.regular_season_wins),losses:Number(r.regular_season_losses),ties:Number(r.regular_season_ties),winPercentage:r.regular_season_win_percentage===null?null:Number(r.regular_season_win_percentage),playoffAppearances:Number(r.playoff_appearances),playoffWins:Number(r.playoff_wins),playoffLosses:Number(r.playoff_losses),playoffWinPercentage:r.playoff_win_percentage===null?null:Number(r.playoff_win_percentage),pointsFor:Number(r.regular_season_points_for)})),
     champions:championsResult.data.map(r=>({year:Number(r.year),memberId:r.member_id,teamName:r.team_name,publicName:identities.get(r.member_id)??null,runnerUp:r.runner_up_team_name,score:Number(r.champion_score),runnerUpScore:Number(r.runner_up_score)})),
     rivalries:rivalriesResult.data.map(r=>({memberAId:r.member_a_id,memberBId:r.member_b_id,memberATeamName:r.member_a_team_name,memberBTeamName:r.member_b_team_name,memberAPublicName:identities.get(r.member_a_id)??null,memberBPublicName:identities.get(r.member_b_id)??null,games:Number(r.games),memberAWins:Number(r.member_a_wins),memberBWins:Number(r.member_b_wins),ties:Number(r.ties)})),
     records:recordsResult.data.map(r=>({type:r.record_type,rank:Number(r.record_rank),year:Number(r.year),week:Number(r.matchup_period),memberId:r.member_id,teamName:r.team_name,publicName:identities.get(r.member_id)??null,opponent:r.opponent_team_name,value:Number(r.record_value)})),
-    seasons:seasonsResult.data.map(r=>({year:Number(r.year),memberId:r.member_id,teamName:r.team_name,wins:Number(r.wins),losses:Number(r.losses),ties:Number(r.ties),pointsFor:Number(r.points_for),finalStanding:r.final_standing===null?null:Number(r.final_standing)})),
+    seasons:seasonsResult.data.map(r=>({playoffSeed:r.playoff_seed===null?null:Number(r.playoff_seed),year:Number(r.year),memberId:r.member_id,teamName:r.team_name,wins:Number(r.wins),losses:Number(r.losses),ties:Number(r.ties),pointsFor:Number(r.points_for),finalStanding:r.final_standing===null?null:Number(r.final_standing)})),
     games,
   };
 }

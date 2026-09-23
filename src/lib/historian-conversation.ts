@@ -20,5 +20,11 @@ export function describeHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus)
   const names=plan.memberIds.map(id=>corpus.managers.find(m=>m.memberId===id)).map(m=>m?.publicName??m?.teamName??"Unknown manager");
   const dates=plan.startYear!==null&&plan.endYear!==null?`${plan.startYear}–${plan.endYear}`:plan.startYear!==null?`since ${plan.startYear}`:plan.endYear!==null?`through ${plan.endYear}`:"all recorded seasons";
   const phase=plan.intent==="manager_playoffs"?"playoffs":plan.gameType.replaceAll("_"," ");
+  if(plan.intent==="conditional_outcome"&&plan.condition){
+    const q=plan.condition;
+    const condition=q.recordMode==="exact"?`${q.wins}-${q.losses}${q.ties?`-${q.ties}`:""} through Week ${q.throughWeek}`:`below .500 after Week ${q.throughWeek}`;
+    const format=q.format==="current"?"latest team count + playoff spots":q.format==="year"?`${q.formatYear} format`:q.format==="team_count"?`${q.teamCount}-team era`:q.format==="compare"?"separate formats":"all formats";
+    return [names.join(" / ")||"league-wide",dates,condition,q.outcome==="playoffs"?"playoff qualification":"championship",format].join(" · ");
+  }
   return [names.join(" / ")||"league-wide",dates,phase==="all"?"regular season + playoffs":phase,plan.metric?.replaceAll("_"," "),plan.windowYears?`${plan.windowYears}-season windows`:null,plan.population==="active_every_season"?"active every season":null,plan.minimumGames?`minimum ${plan.minimumGames} games`:null].filter(Boolean).join(" · ");
 }

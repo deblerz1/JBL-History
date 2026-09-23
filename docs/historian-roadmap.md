@@ -1,5 +1,19 @@
 # Historian next steps
 
+## Conditional historical outcomes
+- Added opening W-L-T records and below-.500 checkpoints for playoff qualification
+  or championship outcomes. One manager or all league team-seasons; optional dates.
+- Default: match latest recorded team count and playoff-slot count. Never broaden
+  silently. Named-year formats also match regular-season length, byes implied by
+  standard seeded bracket size, and actual scoring-week lengths for each playoff round.
+- Explicit all-format pooling, team-count eras and side-by-side format comparisons.
+- Display numerator/denominator, matching season team names, compared seasons,
+  exclusions and small-sample language. Historical frequency is not a calibrated forecast.
+- Exclude active seasons; require unique final seeds, verified qualifier participation
+  (including first-round byes), and a complete single-week regular-season schedule.
+- Still unsupported: arbitrary predictive probabilities, positional conditions,
+  injuries and multi-manager conditional comparisons. Never substitute a career statistic.
+
 ## Composable analytics foundation
 - Implemented: a shared, bounded arithmetic metric catalog drives planner instructions and calculation.
 - Implemented: total points against, PA/PF, PF/PA, losses and ties alongside existing metrics.

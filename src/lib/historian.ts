@@ -1,3 +1,4 @@
+import {answerConditionalOutcome,type OutcomeQuery,type SeasonFormat} from "./historian-outcomes";
 import {prepareLuckGames} from "./historian-luck";
 import {calculateMetric,formatMetric,metricDefinition,luckMetrics,type HistorianMetric} from "./historian-metrics";
 export {historianMetrics,type HistorianMetric} from "./historian-metrics";
@@ -5,12 +6,12 @@ export type HistorianManager={memberId:string;teamName:string;publicName:string|
 export type HistorianChampion={year:number;memberId:string;teamName:string;publicName:string|null;runnerUp:string;score:number;runnerUpScore:number};
 export type HistorianRivalry={memberAId:string;memberBId:string;memberATeamName:string;memberBTeamName:string;memberAPublicName:string|null;memberBPublicName:string|null;games:number;memberAWins:number;memberBWins:number;ties:number};
 export type HistorianRecord={type:string;rank:number;year:number;week:number;memberId:string;teamName:string;publicName:string|null;opponent:string;value:number};
-export type HistorianSeason={year:number;memberId:string;teamName:string;wins:number;losses:number;ties:number;pointsFor:number;finalStanding:number|null};
+export type HistorianSeason={playoffSeed?:number|null;year:number;memberId:string;teamName:string;wins:number;losses:number;ties:number;pointsFor:number;finalStanding:number|null};
 export type HistorianGame={week?:number;scoringPeriodCount?:number;expectedWins?:number;year:number;memberId:string;opponentMemberId?:string;teamName:string;playoff:boolean;points:number;opponentPoints:number;result:"win"|"loss"|"tie"};
-export type HistorianCorpus={managers:HistorianManager[];champions:HistorianChampion[];rivalries:HistorianRivalry[];records:HistorianRecord[];seasons:HistorianSeason[];games:HistorianGame[]};
+export type HistorianCorpus={formats?:SeasonFormat[];managers:HistorianManager[];champions:HistorianChampion[];rivalries:HistorianRivalry[];records:HistorianRecord[];seasons:HistorianSeason[];games:HistorianGame[]};
 export type HistorianContext={question:string;plan:HistorianPlan|null};
 export type HistorianResponse={context?:HistorianContext;interpretation?:string;notes?:string[];answer:string;facts:string[];table?:{caption:string;columns:string[];rows:string[][]};href?:string;hrefLabel?:string};
-export const historianIntents=["manager_record","manager_playoffs","championship","championship_leader","rivalry","season_summary","highest_score","lowest_score","best_win_percentage","rank_metric","unsupported"] as const;
+export const historianIntents=["conditional_outcome","manager_record","manager_playoffs","championship","championship_leader","rivalry","season_summary","highest_score","lowest_score","best_win_percentage","rank_metric","unsupported"] as const;
 export type HistorianIntent=(typeof historianIntents)[number];
 export const historianGameTypes=["regular_season","playoffs","all"] as const;
 export type HistorianGameType=(typeof historianGameTypes)[number];
@@ -20,7 +21,7 @@ export const historianPopulations=["all","active_every_season"] as const;
 export type HistorianPopulation=(typeof historianPopulations)[number];
 export const historianOutputs=["single","list"] as const;
 export type HistorianOutput=(typeof historianOutputs)[number];
-export type HistorianPlan={intent:HistorianIntent;memberIds:string[];startYear:number|null;endYear:number|null;metric:HistorianMetric|null;gameType:HistorianGameType;ranking:HistorianRanking;windowYears:number|null;minimumGames:number|null;population:HistorianPopulation;output:HistorianOutput;limit:number|null};
+export type HistorianPlan={condition?:OutcomeQuery|null;intent:HistorianIntent;memberIds:string[];startYear:number|null;endYear:number|null;metric:HistorianMetric|null;gameType:HistorianGameType;ranking:HistorianRanking;windowYears:number|null;minimumGames:number|null;population:HistorianPopulation;output:HistorianOutput;limit:number|null};
 
 export function deterministicHistorianPlan(rawQuestion:string):HistorianPlan|null{
   const question=rawQuestion.toLowerCase().replace(/[’']/g,"'");
@@ -63,6 +64,7 @@ function mentionedManagers(question:string,corpus:HistorianCorpus){
 }
 
 export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse {
+  if(plan.intent==="conditional_outcome")return answerConditionalOutcome(plan,corpus);
   if(plan.intent==="rank_metric")return answerRankedMetric(plan,corpus);
   const ranged=plan.startYear!==null||plan.endYear!==null;
   const unsupportedScope=
