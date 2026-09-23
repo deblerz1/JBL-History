@@ -48,7 +48,7 @@ jobs:
             exit 1
           fi
       - run: npm ci
-      - name: Evaluate metric capabilities, retrospective luck and follow-ups
+      - name: Evaluate metrics, positional scoring and grouped historical outcomes
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.6-luna' }}
