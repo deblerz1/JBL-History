@@ -22,6 +22,9 @@ function validatePlan(value:unknown,corpus:HistorianCorpus,onInvalid:(reason:Val
   if(!value||typeof value!=="object")return reject("object");
   const plan=value as Partial<HistorianPlan>; const currentYear=new Date().getUTCFullYear();
   if(!historianIntents.includes(plan.intent as HistorianPlan["intent"]))return reject("intent");
+  // A refusal has no executable dimensions. Canonicalize it before checking
+  // leftover filters; supported plans still undergo every validation below.
+  if(plan.intent==="unsupported")return unsupportedPlan();
   if(!Array.isArray(plan.memberIds)||plan.memberIds.some(id=>typeof id!=="string"||!corpus.managers.some(manager=>manager.memberId===id)))return reject("member_ids");
   if(plan.memberIds.length>2)return reject("member_count");
   const validYear=(year:unknown)=>year===null||(Number.isInteger(year)&&Number(year)>=FIRST_YEAR&&Number(year)<=currentYear);

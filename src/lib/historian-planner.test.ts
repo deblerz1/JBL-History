@@ -20,6 +20,13 @@ it("logs a controlled rejection reason without logging the model output",async()
   expect(log.mock.calls[0][0]).not.toContain("DO_NOT_LOG");
 });
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.restoreAllMocks();});
+it("canonicalizes an explicit refusal without executing its leftover positional fields",async()=>{
+  vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");
+  vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:true,json:async()=>({status:"completed",output_text:JSON.stringify({intent:"unsupported",position:"RB",metric:"position_points",memberIds:["unknown"],startYear:2025})})}));
+  vi.spyOn(console,"info").mockImplementation(()=>{});
+  const {interpretHistorianQuestion}=await import("./historian-llm");
+  expect(await interpretHistorianQuestion("Who has the most RB points including the bench?",corpus)).toEqual({intent:"unsupported",memberIds:[],startYear:null,endYear:null,metric:null,gameType:"regular_season",ranking:"highest",windowYears:null,minimumGames:null,population:"all",output:"single",limit:null});
+});
 it.each([
   ["position_points",null,false],
   ["position_points","RB",true],
