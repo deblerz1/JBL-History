@@ -26,10 +26,9 @@
 - Still planned: grouping by season/player, multiple metrics per query.
 - Preserve the existing question suite as regression coverage, not a dictionary of permitted wording.
 
-## Worst manager (planned) and positional scoring (implemented)
-- Worst-manager composite: last-place rate, low regular-season win percentage and season-relative scoring.
-- Publish components and weights; regular-season last place is proposed but must be distinguished
-  from final standings after consolation. Do not quietly reverse title counts or invent weights.
+## Worst manager and positional scoring (implemented)
+- Worst-manager composite v1: 40% regular-season last-place rate, 35% low win rate,
+  25% season-relative low scoring. Components and normalization are published on the rankings page.
 - Implemented: QB/RB/WR/TE/K/D-ST starter totals, points per completed matchup, and share of official team scoring.
 - Position is an independent query dimension; metrics compose with dates, managers, phase,
   participation, rolling windows, minimum games and lists. Follow-ups can change position.
@@ -71,13 +70,23 @@
 - Week-level game keys and runtime completeness gates implemented; initial audit passed.
 - Explain that scoring settings, schedule and season lengths affect comparisons.
 
-## Best manager (planned)
-- Clarify: most championships, highest win percentage, best recent stretch, or balanced career ranking?
-- Offer a published, versioned composite using championships, career win percentage,
-  playoff appearances/rate and playoff win percentage. Agree on weights with the league first.
-- Normalize components, publish minimum sample requirements, show every component and ties.
-- Let users adjust weights; label results as a chosen definition, not an objective official ranking.
-- Model explains definitions and findings. Database/code computes metrics; the model must not invent weights or values.
+## Best manager (implemented)
+- User-approved v1 weights: championships 40%, regular win percentage 30%, playoff appearance
+  rate 15%, playoff win percentage 15%. Bare best/worst-manager questions select the composites;
+  an explicit metric overrides them.
+- Three completed seasons inside the requested range qualify; shorter careers are provisional.
+  Active seasons excluded. Missing required season coverage blocks the full result.
+- Title credit is relative to the qualified title leader; ordinary rate components use percentage
+  points. No playoff appearances earns zero playoff credit.
+- For worst scoring, average each season's PPG relative to its league PPG, then map the qualified
+  reference group's lowest strength to 100 and highest to 0 (equal strength: 50). Clamp provisional
+  values to 0–100. Reference group is computed before manager selection, keeping comparisons stable.
+- Last place uses lowest regular-season win percentage, then points scored; complete ties share
+  last place. It does not use final consolation standings.
+- Both tables show weighted component points, underlying records, qualification and methodology.
+  Date ranges, named managers and lists supported; rolling composites/custom weights remain unsupported.
+- Custom weights remain a future feature. The model must not invent weights or numerical values.
+- Six paid live planner requests cover composite meaning, explicit-metric overrides and comparisons.
 
 ## Evaluation
 - Add live conversations: phase changes, manager comparisons, date overrides, Jack clarification, new-topic reset.

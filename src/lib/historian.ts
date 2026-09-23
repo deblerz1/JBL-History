@@ -1,4 +1,5 @@
 import {answerConditionalOutcome,type OutcomeQuery,type SeasonFormat} from "./historian-outcomes";
+import {answerManagerScore} from "./historian-manager-score";
 import {prepareLuckGames} from "./historian-luck";
 import {positionMetrics,positionScope,type HistorianPosition} from "./historian-position";
 import {calculateMetric,formatMetric,metricDefinition,luckMetrics,type HistorianMetric} from "./historian-metrics";
@@ -12,7 +13,7 @@ export type HistorianGame={seasonTeamId?:string;scoringWeeks?:number[];positionP
 export type HistorianCorpus={formats?:SeasonFormat[];managers:HistorianManager[];champions:HistorianChampion[];rivalries:HistorianRivalry[];records:HistorianRecord[];seasons:HistorianSeason[];games:HistorianGame[]};
 export type HistorianContext={question:string;plan:HistorianPlan|null};
 export type HistorianResponse={context?:HistorianContext;interpretation?:string;notes?:string[];answer:string;facts:string[];table?:{caption:string;columns:string[];rows:string[][]};href?:string;hrefLabel?:string};
-export const historianIntents=["conditional_outcome","manager_record","manager_playoffs","championship","championship_leader","rivalry","season_summary","highest_score","lowest_score","best_win_percentage","rank_metric","unsupported"] as const;
+export const historianIntents=["best_manager","worst_manager","conditional_outcome","manager_record","manager_playoffs","championship","championship_leader","rivalry","season_summary","highest_score","lowest_score","best_win_percentage","rank_metric","unsupported"] as const;
 export type HistorianIntent=(typeof historianIntents)[number];
 export const historianGameTypes=["regular_season","playoffs","all"] as const;
 export type HistorianGameType=(typeof historianGameTypes)[number];
@@ -65,6 +66,7 @@ function mentionedManagers(question:string,corpus:HistorianCorpus){
 }
 
 export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse {
+  if(plan.intent==="best_manager"||plan.intent==="worst_manager")return answerManagerScore(plan,corpus);
   if(plan.intent==="conditional_outcome")return answerConditionalOutcome(plan,corpus);
   if(plan.intent==="rank_metric")return answerRankedMetric(plan,corpus);
   const ranged=plan.startYear!==null||plan.endYear!==null;
