@@ -1,6 +1,26 @@
 import "server-only";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { HistorianCorpus } from "@/lib/historian";
+import type { HistorianCorpus,HistorianPlan } from "@/lib/historian";
+import {positionMetrics,positionScope,verifyPositionGames,type PositionSnapshot} from "@/lib/historian-position";
+
+export async function loadHistorianPositions(corpus:HistorianCorpus,plan:HistorianPlan):Promise<HistorianCorpus>{
+  if(!plan.position||!positionMetrics.has(plan.metric??""))return corpus;
+  const games=positionScope(plan,corpus);
+  const ids=[...new Set(games.flatMap(g=>g.seasonTeamId?[g.seasonTeamId]:[]))];
+  const snapshots:PositionSnapshot[]=[];
+  if(ids.length){
+    const supabase=createServerSupabaseClient();
+    for(let offset=0;;offset+=500){
+      const {data,error}=await supabase.from("roster_snapshots").select("season_team_id,player_id,matchup_period,lineup_slot,points,historical_position:raw_data->>position").in("season_team_id",ids).order("id").range(offset,offset+499);
+      if(error)throw new Error("Positional lineup data could not be loaded.");
+      snapshots.push(...(data??[]) as PositionSnapshot[]);
+      if(!data||data.length<500)break;
+    }
+  }
+  const verified=verifyPositionGames(games,snapshots,plan.position);
+  const replacements=new Map(games.map((g,i)=>[g,verified[i]]));
+  return {...corpus,games:corpus.games.map(g=>replacements.get(g)??g)};
+}
 
 export type Champion = { year: number; teamName: string; ownerName: string | null; runnerUpTeamName: string; championScore: number; runnerUpScore: number };
 export type ManagerCareer = { teamName: string; ownerName: string | null; championships: number; winPercentage: number | null; playoffAppearances: number };
@@ -59,10 +79,10 @@ export async function getHistorianCorpus():Promise<HistorianCorpus> {
     const playoff=playoffIds.has(matchup.id); const regular=Number(matchup.matchup_period)<=Number(regularPeriods.get(matchup.season_id)); if(!regular&&!playoff)return [];
     const result=(teamId:string):"win"|"loss"|"tie"=>matchup.winner_team_id===null?"tie":matchup.winner_team_id===teamId?"win":"loss";
     const periods=schedules.get(matchup.season_id)?.[String(matchup.matchup_period)];
-    const metadata={week:Array.isArray(periods)&&periods.length===1?Number(periods[0]):undefined,scoringPeriodCount:Array.isArray(periods)?periods.length:undefined};
+    const metadata={scoringWeeks:Array.isArray(periods)?periods.map(Number):undefined,week:Array.isArray(periods)&&periods.length===1?Number(periods[0]):undefined,scoringPeriodCount:Array.isArray(periods)?periods.length:undefined};
     return [
-      {...metadata,year:Number(home.year),memberId:home.member_id,opponentMemberId:away.member_id,teamName:home.team_name,playoff,points:Number(matchup.home_score),opponentPoints:Number(matchup.away_score),result:result(matchup.home_team_id)},
-      {...metadata,year:Number(away.year),memberId:away.member_id,opponentMemberId:home.member_id,teamName:away.team_name,playoff,points:Number(matchup.away_score),opponentPoints:Number(matchup.home_score),result:result(matchup.away_team_id)},
+      {...metadata,seasonTeamId:matchup.home_team_id,year:Number(home.year),memberId:home.member_id,opponentMemberId:away.member_id,teamName:home.team_name,playoff,points:Number(matchup.home_score),opponentPoints:Number(matchup.away_score),result:result(matchup.home_team_id)},
+      {...metadata,seasonTeamId:matchup.away_team_id,year:Number(away.year),memberId:away.member_id,opponentMemberId:home.member_id,teamName:away.team_name,playoff,points:Number(matchup.away_score),opponentPoints:Number(matchup.home_score),result:result(matchup.away_team_id)},
     ];
   });
   return {

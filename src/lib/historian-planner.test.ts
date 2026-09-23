@@ -20,6 +20,21 @@ it("logs a controlled rejection reason without logging the model output",async()
   expect(log.mock.calls[0][0]).not.toContain("DO_NOT_LOG");
 });
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.restoreAllMocks();});
+it.each([
+  ["position_points",null,false],
+  ["position_points","RB",true],
+  ["position_scoring_share","WR",true],
+  ["wins","RB",false],
+  ["position_points","FLEX",false],
+])("validates position/metric pairing %s %s",async(metric,position,accepted)=>{
+  const plan={intent:"rank_metric",memberIds:[],startYear:2025,endYear:2025,metric,position,condition:null,gameType:"regular_season",ranking:"highest",windowYears:null,minimumGames:null,population:"all",output:"single",limit:null};
+  vi.stubEnv("OPENAI_API_KEY","synthetic-test-key");
+  vi.stubGlobal("fetch",vi.fn().mockResolvedValue({ok:true,json:async()=>({status:"completed",output_text:JSON.stringify(plan)})}));
+  vi.spyOn(console,"info").mockImplementation(()=>{});
+  const {interpretHistorianQuestion}=await import("./historian-llm");
+  const result=await interpretHistorianQuestion("Who got the most RB points in 2025?",corpus);
+  if(accepted)expect(result).toMatchObject({metric,position});else expect(result).toBeNull();
+});
 it("does not call the provider for an exact supported shortcut",async()=>{
   const fetchMock=vi.fn();vi.stubGlobal("fetch",fetchMock);
   vi.spyOn(console,"info").mockImplementation(()=>{});

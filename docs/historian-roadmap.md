@@ -23,17 +23,30 @@
 - Bare best/worst in playoffs defaults to playoff win percentage; explicit scoring metrics override it.
 - Show record/sample, formula, statistical ties and matchup-versus-week limitations.
 - Scoring ratios describe scoring balance, not pure luck. Model selects operations; code does arithmetic.
-- Still planned: grouping by season/player/position, multiple metrics per query, audited weekly expected wins.
+- Still planned: grouping by season/player, multiple metrics per query.
 - Preserve the existing question suite as regression coverage, not a dictionary of permitted wording.
 
-## Worst manager and positional scoring (planned)
+## Worst manager (planned) and positional scoring (implemented)
 - Worst-manager composite: last-place rate, low regular-season win percentage and season-relative scoring.
 - Publish components and weights; regular-season last place is proposed but must be distinguished
   from final standings after consolation. Do not quietly reverse title counts or invent weights.
-- Audit historical lineup coverage and reconcile starting-player points to team totals before RB/WR queries.
-- Default positional scoring to actual starter points, including FLEX by player position, excluding bench.
-- Attribute points to the manager that week; retain scoring-period keys for multi-week playoffs.
-- Disclose missing seasons, scoring corrections, roster-slot changes and differing season lengths.
+- Implemented: QB/RB/WR/TE/K/D-ST starter totals, points per completed matchup, and share of official team scoring.
+- Position is an independent query dimension; metrics compose with dates, managers, phase,
+  participation, rolling windows, minimum games and lists. Follow-ups can change position.
+- Lazy server-side roster loading uses stable pagination and historical snapshot positions.
+  Ordinary queries do not fetch lineups. Bench/IR excluded; FLEX counts by historical position.
+- Every requested matchup must have scoring-week mapping, recorded starters with finite points
+  and known positions, and starter totals within 0.02 of official scoring. Multi-week playoffs
+  sum their constituent weeks once; per-game means per matchup, not per scoring week.
+- Any failed requested matchup blocks the full positional result; disclose affected seasons,
+  verified alternative seasons and reasons instead of silently removing missing data.
+- Audit found no 2017–2018 snapshots and four later reconciliation exceptions. Runtime checks,
+  rather than year whitelists, determine whether a particular query is supported.
+- Reconciliation is necessary but not proof of perfect lineups (e.g. missing zero-point players).
+  Scoring corrections, position changes and different season lengths still affect comparisons.
+- Bench-inclusive, individual-player, FLEX-slot-only and opponent-positional queries remain unsupported.
+- Positional unit coverage checks arithmetic, FLEX/bench, missing data, zero denominators,
+  multi-week playoffs and manager scope. Live evaluation adds six paid planner requests.
 
 ## Conversation
 - Implemented: one prior question and validated plan per open chat; explicit New topic reset.

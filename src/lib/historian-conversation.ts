@@ -26,5 +26,5 @@ export function describeHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus)
     const format=q.format==="current"?"latest team count + playoff spots":q.format==="year"?`${q.formatYear} format`:q.format==="team_count"?`${q.teamCount}-team era`:q.format==="compare"?"separate formats":"all formats";
     return [names.join(" / ")||"league-wide",dates,condition,q.outcome==="playoffs"?"playoff qualification":"championship",format].join(" · ");
   }
-  return [names.join(" / ")||"league-wide",dates,phase==="all"?"regular season + playoffs":phase,plan.metric?.replaceAll("_"," "),plan.windowYears?`${plan.windowYears}-season windows`:null,plan.population==="active_every_season"?"active every season":null,plan.minimumGames?`minimum ${plan.minimumGames} games`:null].filter(Boolean).join(" · ");
+  return [names.join(" / ")||"league-wide",dates,phase==="all"?"regular season + playoffs":phase,plan.position?`${plan.position} starters`:null,plan.metric?.replaceAll("_"," "),plan.windowYears?`${plan.windowYears}-season windows`:null,plan.population==="active_every_season"?"active every season":null,plan.minimumGames?`minimum ${plan.minimumGames} games`:null].filter(Boolean).join(" · ");
 }

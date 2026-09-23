@@ -1,6 +1,6 @@
 // A bounded expression language: the model selects a metric; only code defines
 // arithmetic. Definitions drive both planner documentation and execution.
-export type GameTotals={games:number;wins:number;losses:number;ties:number;points:number;opponentPoints:number;expectedWins?:number};
+export type GameTotals={games:number;wins:number;losses:number;ties:number;points:number;opponentPoints:number;expectedWins?:number;positionPoints?:number};
 type Expression={field:keyof GameTotals}|{constant:number}|{op:"add"|"subtract"|"multiply"|"divide";left:Expression;right:Expression};
 type MetricDefinition={label:string;formula:string;format:"percent"|"integer"|"decimal";expression:Expression;note?:string};
 const field=(field:keyof GameTotals):Expression=>({field});
@@ -12,6 +12,9 @@ const luck=binary("subtract",actualWins,field("expectedWins"));
 const luckNote="Schedule luck compares results with weekly scoring rank against every other team. Positive means more wins than expected; negative means fewer. It does not measure injuries or every kind of luck.";
 export const luckMetrics=new Set<string>(["expected_wins","schedule_luck","schedule_luck_per_game"]);
 export const metricDefinitions={
+  position_points:{label:"starter positional points",formula:"sum of starter points at the selected historical player position",format:"decimal",expression:field("positionPoints")},
+  position_points_per_game:{label:"starter positional points per matchup",formula:"starter positional points ÷ completed matchups",format:"decimal",expression:ratio("positionPoints","games")},
+  position_scoring_share:{label:"starter positional scoring share",formula:"starter positional points ÷ official team points",format:"percent",expression:ratio("positionPoints","points")},
   expected_wins:{label:"expected wins",formula:"sum of weekly (other teams outscored + ½ tied) ÷ number of other teams",format:"decimal",expression:field("expectedWins"),note:luckNote},
   schedule_luck:{label:"schedule luck (wins above expected)",formula:"wins + ½ ties − expected wins",format:"decimal",expression:luck,note:luckNote},
   schedule_luck_per_game:{label:"schedule luck per game",formula:"(wins + ½ ties − expected wins) ÷ completed games",format:"decimal",expression:binary("divide",luck,field("games")),note:luckNote},
@@ -44,4 +47,4 @@ export function formatMetric(metric:HistorianMetric,value:number):string{
   const format=metricDefinitions[metric].format;
   return format==="percent"?`${(value*100).toFixed(1)}%`:format==="integer"?String(value):value.toFixed(2);
 }
-export function metricPlannerCatalog():string{return JSON.stringify(Object.entries(metricDefinitions).map(([id,definition])=>({metric:id,formula:definition.formula,phases:luckMetrics.has(id)?["regular_season"]:["regular_season","playoffs","all"],rollingWindows:true,managerFilters:true,lists:true})));}
+export function metricPlannerCatalog():string{return JSON.stringify(Object.entries(metricDefinitions).map(([id,definition])=>({metric:id,formula:definition.formula,requiresPosition:id.startsWith("position_"),phases:luckMetrics.has(id)?["regular_season"]:["regular_season","playoffs","all"],rollingWindows:true,managerFilters:true,lists:true})));}

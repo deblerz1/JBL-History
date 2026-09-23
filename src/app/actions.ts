@@ -1,7 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { clearLeagueSession, credentialsMatch, isLeagueSessionValid, setLeagueSession } from "@/lib/auth/session";
-import { getHistorianCorpus } from "@/lib/data/museum";
+import { getHistorianCorpus,loadHistorianPositions } from "@/lib/data/museum";
 import { answerHistorianPlan,historianPlanningFailure,type HistorianContext,type HistorianResponse } from "@/lib/historian";
 import { ambiguousManagerQuestion,describeHistorianPlan } from "@/lib/historian-conversation";
 import { interpretHistorianQuestion } from "@/lib/historian-llm";
@@ -33,6 +33,10 @@ export async function askHistorian(question:string,context?:HistorianContext):Pr
   if(clarification)return {answer:clarification,facts:[],context:{question:clean,plan:null}};
   const plan=await interpretHistorianQuestion(clean,corpus,context);
   if(!plan)return historianPlanningFailure();
-  const response=answerHistorianPlan(plan,corpus);
+  let verified=corpus;
+  try{verified=await loadHistorianPositions(corpus,plan);}catch{
+    return {answer:"I couldn't load the historical lineups just now. Please try again.",facts:["No positional total was estimated."]};
+  }
+  const response=answerHistorianPlan(plan,verified);
   return {...response,...(plan.intent!=="unsupported"?{interpretation:describeHistorianPlan(plan,corpus),context:{question:clean,plan}}:{})};
 }
