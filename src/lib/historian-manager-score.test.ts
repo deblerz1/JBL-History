@@ -1,5 +1,5 @@
 import {expect,it} from "vitest";
-import {answerManagerScore,calculateManagerScores} from "./historian-manager-score";
+import {answerManagerScore,calculateManagerScores,rankManagerScores,overallManagerRank} from "./historian-manager-score";
 import type {HistorianCorpus,HistorianGame,HistorianPlan} from "./historian";
 function fixture():HistorianCorpus{
   const corpus:HistorianCorpus={formats:[],managers:["a","b","c","d"].map(memberId=>({memberId,teamName:memberId,publicName:null,championships:0,wins:0,losses:0,ties:0,winPercentage:null,playoffAppearances:0,playoffWins:0,playoffLosses:0,playoffWinPercentage:null,pointsFor:0})),games:[],seasons:[],champions:[],records:[],rivalries:[]};
@@ -65,5 +65,38 @@ it("ties share last place and equal scoring components",()=>{
   const answer=answerManagerScore({...plan,intent:"worst_manager"},c);expect(answer.notes!.some(n=>n.startsWith("Statistically tied"))).toBe(true);
 });
 it("renders matching columns and exposes component weights for both formulas",()=>{
-  for(const intent of ["best_manager","worst_manager"] as const){const r=answerManagerScore({...plan,intent},fixture());expect(r.table!.rows.every(row=>row.length===r.table!.columns.length)).toBe(true);expect(r.notes!.join(" ")).toContain("40%");}
+  for(const intent of ["best_manager","worst_manager","poor_performance"] as const){const r=answerManagerScore({...plan,intent},fixture());expect(r.table!.rows.every(row=>row.length===r.table!.columns.length)).toBe(true);expect(r.notes!.join(" ")).toContain("40%");}
+});
+it("uses the display's exact overall ordering for historian best and worst answers",()=>{
+  const c=fixture(),rows=calculateManagerScores(c).rows;
+  const display=rankManagerScores(rows).filter(r=>r.qualified);
+  const best=answerManagerScore({...plan,output:"single"},c);
+  const worst=answerManagerScore({...plan,intent:"worst_manager",output:"single",ranking:"highest"},c);
+  expect(best.table!.rows[0][0]).toBe(display[0].teamName);
+  expect(worst.table!.rows[0][0]).toBe(display.at(-1)!.teamName);
+  expect(worst.table!.rows[0][2]).toBe(String(overallManagerRank(display.at(-1)!,rows)));
+  expect(worst.answer).toContain("overall manager score");
+  expect(answerManagerScore(plan,c).table!.rows.map(r=>r[0])).toEqual(rankManagerScores(rows).map(r=>r.teamName));
+});
+it("does not substitute the poor-performance leader for the lowest overall manager",()=>{
+  const c=fixture();
+  c.seasons=c.seasons.map(s=>({...s,playoffSeed:s.memberId==="b"?4:s.memberId==="d"?2:s.playoffSeed}));
+  c.games=c.games.map(g=>!g.playoff?g:g.memberId==="a"?{...g,opponentMemberId:"d",points:80,opponentPoints:100,result:"loss"}:{...g,memberId:"d",teamName:"d",points:100,opponentPoints:80,result:"win"});
+  c.champions=c.champions.map(ch=>({...ch,memberId:"d"}));
+  const worst=answerManagerScore({...plan,intent:"worst_manager",output:"single"},c);
+  const poor=answerManagerScore({...plan,intent:"poor_performance",output:"single"},c);
+  expect(worst.table!.rows[0][0]).toBe("b");
+  expect(poor.table!.rows[0][0]).toBe("d");
+  expect(poor.answer).toContain("separate poor-performance index");
+  expect(worst.table!.rows[0][2]).toBe("3");
+  expect(worst.notes!.join(" ")).toContain("Statistically tied");
+});
+it("provisional rows do not become the lowest qualified manager or receive an overall rank",()=>{
+  const c=fixture();c.managers.push({...c.managers[3],memberId:"new",teamName:"New"});
+  c.seasons=c.seasons.map(s=>s.memberId==="d"&&s.year===2025?{...s,memberId:"new"}:s);
+  c.games=c.games.map(g=>g.year===2025?{...g,memberId:g.memberId==="d"?"new":g.memberId,opponentMemberId:g.opponentMemberId==="d"?"new":g.opponentMemberId}:g);
+  const worst=answerManagerScore({...plan,intent:"worst_manager",output:"single"},c);
+  expect(worst.table!.rows[0][0]).toBe("c");
+  const provisional=calculateManagerScores(c).rows.find(r=>r.memberId==="new")!;
+  expect(overallManagerRank(provisional,calculateManagerScores(c).rows)).toBeNull();
 });

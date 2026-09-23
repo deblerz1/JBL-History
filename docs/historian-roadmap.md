@@ -27,8 +27,10 @@
 - Preserve the existing question suite as regression coverage, not a dictionary of permitted wording.
 
 ## Worst manager and positional scoring (implemented)
-- Worst-manager composite v1: 40% regular-season last-place rate, 35% low win rate,
-  25% season-relative low scoring. Components and normalization are published on the rankings page.
+- Bare worst-manager questions return the lowest qualified overall score, using exactly the same
+  score and ordering as best-manager questions and the homepage/full rankings.
+- The old 40% last-place / 35% low-win / 25% low-scoring formula remains available only as the
+  explicitly requested poor-performance index, with separate labeling and a collapsed optional exhibit.
 - Implemented: QB/RB/WR/TE/K/D-ST starter totals, points per completed matchup, and share of official team scoring.
 - Position is an independent query dimension; metrics compose with dates, managers, phase,
   participation, rolling windows, minimum games and lists. Follow-ups can change position.
@@ -72,7 +74,7 @@
 
 ## Best manager (implemented)
 - User-approved v1 weights: championships 40%, regular win percentage 30%, playoff appearance
-  rate 15%, playoff win percentage 15%. Bare best/worst-manager questions select the composites;
+  rate 15%, playoff win percentage 15%. Bare best/worst-manager questions select the highest/lowest qualified overall score;
   an explicit metric overrides them.
 - Three completed seasons inside the requested range qualify; shorter careers are provisional.
   Active seasons excluded. Missing required season coverage blocks the full result.
@@ -86,7 +88,10 @@
 - Both tables show weighted component points, underlying records, qualification and methodology.
   Date ranges, named managers and lists supported; rolling composites/custom weights remain unsupported.
 - Custom weights remain a future feature. The model must not invent weights or numerical values.
-- Six paid live planner requests cover composite meaning, explicit-metric overrides and comparisons.
+- Nine paid live planner requests cover canonical best/worst meaning, explicit poor-performance
+  requests, direction changes, explicit-metric overrides and comparisons.
+- Regression tests compare historian answers with the shared ordering used on both ranking displays.
+  Career statistics sorted by championships are separately labeled and carry no overall rank.
 
 ## Evaluation
 - Add live conversations: phase changes, manager comparisons, date overrides, Jack clarification, new-topic reset.

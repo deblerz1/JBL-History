@@ -1,4 +1,5 @@
 import "server-only";
+import {calculateManagerScores,rankManagerScores,overallManagerRank} from "@/lib/historian-manager-score";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { HistorianCorpus,HistorianPlan } from "@/lib/historian";
 import {positionMetrics,positionScope,verifyPositionGames,type PositionSnapshot} from "@/lib/historian-position";
@@ -106,18 +107,11 @@ export async function getHistorianCorpus():Promise<HistorianCorpus> {
 }
 
 export async function getMuseumOverview() {
-  const supabase = createServerSupabaseClient();
-  const [championsResult, managersResult, identities] = await Promise.all([
-    supabase.from("analytics_champions").select("year,member_id,team_name,runner_up_team_name,champion_score,runner_up_score").order("year", { ascending: false }),
-    supabase.from("analytics_manager_careers").select("member_id,current_team_name,championships,regular_season_win_percentage,playoff_appearances").order("championships", { ascending: false }).order("regular_season_win_percentage", { ascending: false }).limit(5),
-    identityMap(supabase),
-  ]);
-  if (championsResult.error) throw new Error(`Champions query failed: ${championsResult.error.message}`);
-  if (managersResult.error) throw new Error(`Manager query failed: ${managersResult.error.message}`);
-
-  const champions: Champion[] = championsResult.data.map((row) => ({ year: row.year, teamName: row.team_name, ownerName: identities.get(row.member_id) ?? null, runnerUpTeamName: row.runner_up_team_name, championScore: Number(row.champion_score), runnerUpScore: Number(row.runner_up_score) }));
-  const managers: ManagerCareer[] = managersResult.data.map((row) => ({ teamName: row.current_team_name, ownerName: identities.get(row.member_id) ?? null, championships: Number(row.championships), winPercentage: row.regular_season_win_percentage === null ? null : Number(row.regular_season_win_percentage), playoffAppearances: Number(row.playoff_appearances) }));
-  return { champions, managers };
+  const corpus=await getHistorianCorpus();
+  const scores=calculateManagerScores(corpus);
+  const champions:Champion[]=[...corpus.champions].sort((a,b)=>b.year-a.year).map(c=>({year:c.year,teamName:c.teamName,ownerName:c.publicName,runnerUpTeamName:c.runnerUp,championScore:c.score,runnerUpScore:c.runnerUpScore}));
+  const managers=rankManagerScores(scores.rows).filter(m=>m.qualified).slice(0,5).map(m=>({memberId:m.memberId,teamName:m.teamName,ownerName:m.publicName,championships:m.titles,winPercentage:m.winRate,playoffAppearances:m.appearances,overallScore:m.best,overallRank:overallManagerRank(m,scores.rows)}));
+  return {champions,managers,rankingError:scores.error};
 }
 
 export async function getManagerRankings() {

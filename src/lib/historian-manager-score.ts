@@ -1,9 +1,10 @@
 import type {HistorianCorpus,HistorianPlan,HistorianResponse} from "./historian";
 
-export const managerScoreVersion="JBL manager score v1";
+export const managerScoreVersion="JBL overall ranking v1";
 export const managerScoreRules=[
-  "Best: 40% championship credit + 30% regular-season win percentage + 15% playoff appearance rate + 15% playoff win percentage.",
-  "Worst: 40% regular-season last-place rate + 35% regular-season loss-equivalent rate + 25% low-scoring credit. Higher means worse.",
+  "Overall score: 40% championship credit + 30% regular-season win percentage + 15% playoff appearance rate + 15% playoff win percentage.",
+  "Separate poor-performance index (explicit requests only): 40% regular-season last-place rate + 35% regular-season loss-equivalent rate + 25% low-scoring credit. Higher means more poor-performance indicators; this is not the overall ranking.",
+  "Best and worst use the same overall score: best is the highest qualified score; worst is the lowest. The rankings page and historian share this ordering.",
   "Three completed seasons in the selected range qualify. Shorter careers are provisional and cannot win the qualified ranking. Active seasons are excluded.",
   "Championship credit = titles / the qualified title leader's titles, capped at 100%; no titles earns zero. Percentage components are multiplied by 100. No playoff appearances earns zero playoff-component credit.",
   "Scoring strength = the mean of each season's team points per game / league points per game. Each season has equal weight. Low-scoring credit maps the qualified league's highest strength to 0 and lowest to 100; equal strengths get equal credit (50 if all are equal). Provisional values are capped at 0–100.",
@@ -57,17 +58,30 @@ export function calculateManagerScores(corpus:HistorianCorpus,startYear:number|n
   return {rows,years};
 }
 
+export function overallManagerRank(row:ManagerScoreRow,rows:ManagerScoreRow[]):number|null{
+  return row.qualified?1+rows.filter(other=>other.qualified&&other.best>row.best+1e-9).length:null;
+}
+
+export function rankManagerScores(rows:ManagerScoreRow[],mode:"overall"|"poor_performance"="overall",direction:"highest"|"lowest"="highest"):ManagerScoreRow[]{
+  const field=mode==="overall"?"best":"worst";
+  return [...rows].sort((a,b)=>Number(b.qualified)-Number(a.qualified)||(Math.abs(a[field]-b[field])<1e-9?0:direction==="lowest"?a[field]-b[field]:b[field]-a[field])||a.teamName.localeCompare(b.teamName));
+}
+
 export function answerManagerScore(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse{
   if(plan.windowYears!==null||plan.minimumGames!==null||plan.population!=="all"||plan.gameType!=="regular_season"||plan.metric!==null||plan.position!=null)return {answer:"The published manager score supports completed-season date ranges, manager selections and lists. It has fixed component weights and a three-season qualification rule; I haven't dropped your other filters.",facts:[]};
   const result=calculateManagerScores(corpus,plan.startYear,plan.endYear);
   if(result.error)return {answer:result.error,facts:[]};
-  const worst=plan.intent==="worst_manager",kind=worst?"worst":"best";
-  const all=result.rows.filter(r=>!plan.memberIds.length||plan.memberIds.includes(r.memberId)).sort((a,b)=>Number(b.qualified)-Number(a.qualified)||(plan.ranking==="lowest"?a[kind]-b[kind]:b[kind]-a[kind])||a.teamName.localeCompare(b.teamName));
+  const worst=plan.intent==="poor_performance",kind=worst?"worst":"best";
+  const direction=plan.intent==="worst_manager"?"lowest":plan.ranking;
+  const label=worst?"separate poor-performance index":"overall manager score";
+  const overall=rankManagerScores(result.rows).filter(r=>r.qualified);
+  const rank=(r:ManagerScoreRow)=>String(overallManagerRank(r,result.rows)??"—");
+  const all=rankManagerScores(result.rows,worst?"poor_performance":"overall",direction).filter(r=>!plan.memberIds.length||plan.memberIds.includes(r.memberId));
   const qualified=all.filter(r=>r.qualified),first=qualified[0]??all[0];
   if(!first)return {answer:"No completed-season record matches those managers.",facts:[]};
   const tied=qualified.filter(r=>Math.abs(r[kind]-first[kind])<1e-9);
   const list=plan.output==="list"||plan.memberIds.length>1;
   const shown=list?all.slice(0,plan.limit??all.length):[first];
   const notes=[...managerScoreRules,`Completed seasons: ${result.years.join(", ")}.`,...(tied.length>1?[`Statistically tied at the leading score: ${tied.map(r=>r.teamName).join(", ")}. Alphabetical display order does not break ties.`]:[]),"Component columns show weighted points toward the 100-point total. Raw records and scoring strength are shown alongside them."];
-  return {answer:list?`${managerScoreVersion}: ${kind}-manager scores, with provisional careers listed separately after qualified managers.`:`${first.teamName}: ${first[kind].toFixed(1)}/100 on the ${kind}-manager formula${first.qualified?"":" (provisional; not eligible for the qualified ranking)"}.`,facts:[],notes,table:{caption:`${managerScoreVersion} · ${kind} · ${result.years[0]}–${result.years.at(-1)}`,columns:["Team","Status","Seasons","Score / 100",...(worst?["Last place / seasons","Record","Scoring vs league","Last place / 40","Low win rate / 35","Low scoring / 25"]:["Titles","Record","Playoffs / seasons","Playoff games","Playoff win %","Titles / 40","Win rate / 30","Appearances / 15","Playoff wins / 15"])],rows:shown.map(r=>[`${r.teamName}${r.publicName?` · ${r.publicName}`:""}`,r.qualified?"Qualified":"Provisional",String(r.seasons),r[kind].toFixed(1),...(worst?[`${r.lastPlaces}/${r.seasons}`,`${r.wins}-${r.losses}-${r.ties}`,`${(100*r.scoringStrength).toFixed(1)}%`,...r.worstComponents.map((v,i)=>(v*[.4,.35,.25][i]).toFixed(1))]:[String(r.titles),`${r.wins}-${r.losses}-${r.ties}`,`${r.appearances}/${r.seasons}`,String(r.playoffGames),`${(100*r.playoffWinRate).toFixed(1)}%`,...r.bestComponents.map((v,i)=>(v*[.4,.3,.15,.15][i]).toFixed(1))])])},href:"/museum/managers",hrefLabel:"View rankings and methodology"};
+  return {answer:list?`${label}, ordered ${direction} to ${direction==="highest"?"lowest":"highest"}, with provisional careers after qualified managers.`:`${first.teamName}${first.publicName?` (${first.publicName})`:""}: ${first[kind].toFixed(1)}/100 on the ${label}${first.qualified&&!worst?` — overall rank ${rank(first)} of ${overall.length} qualified managers`:""}${first.qualified?"":" (provisional; not eligible for the qualified ranking)"}.`,facts:[],notes,table:{caption:`${managerScoreVersion} · ${label} · ${result.years[0]}–${result.years.at(-1)}`,columns:["Team","Status","Overall rank","Seasons","Score / 100",...(worst?["Last place / seasons","Record","Scoring vs league","Last place / 40","Low win rate / 35","Low scoring / 25"]:["Titles","Record","Playoffs / seasons","Playoff games","Playoff win %","Titles / 40","Win rate / 30","Appearances / 15","Playoff wins / 15"])],rows:shown.map(r=>[`${r.teamName}${r.publicName?` · ${r.publicName}`:""}`,r.qualified?"Qualified":"Provisional",rank(r),String(r.seasons),r[kind].toFixed(1),...(worst?[`${r.lastPlaces}/${r.seasons}`,`${r.wins}-${r.losses}-${r.ties}`,`${(100*r.scoringStrength).toFixed(1)}%`,...r.worstComponents.map((v,i)=>(v*[.4,.35,.25][i]).toFixed(1))]:[String(r.titles),`${r.wins}-${r.losses}-${r.ties}`,`${r.appearances}/${r.seasons}`,String(r.playoffGames),`${(100*r.playoffWinRate).toFixed(1)}%`,...r.bestComponents.map((v,i)=>(v*[.4,.3,.15,.15][i]).toFixed(1))])])},href:"/museum/managers",hrefLabel:"View rankings and methodology"};
 }

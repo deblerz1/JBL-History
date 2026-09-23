@@ -4,7 +4,7 @@ import { getMuseumOverview } from "@/lib/data/museum";
 export const dynamic = "force-dynamic";
 
 export default async function MuseumPage() {
-  const { champions, managers } = await getMuseumOverview();
+  const { champions, managers, rankingError } = await getMuseumOverview();
   const latestChampion = champions[0];
 
   return <main>
@@ -18,8 +18,8 @@ export default async function MuseumPage() {
     </section>
 
     <section className="museum-grid" id="rankings">
-      <article className="leaderboard-panel"><div className="section-heading compact"><div><p className="eyebrow">The eternal table</p><h2>Manager rankings</h2></div><span>By titles, then win %</span></div>
-        <ol className="manager-list">{managers.map((manager, index) => <li key={manager.teamName}><span className="rank">{String(index + 1).padStart(2, "0")}</span><div><strong>{manager.teamName}</strong><small>{manager.ownerName} · {manager.playoffAppearances} playoff appearances</small></div><div className="manager-stat"><strong>{manager.championships}</strong><small>{manager.championships === 1 ? "title" : "titles"}</small></div><div className="manager-stat"><strong>{manager.winPercentage === null ? "—" : `${(manager.winPercentage * 100).toFixed(1)}%`}</strong><small>win rate</small></div></li>)}</ol>
+      <article className="leaderboard-panel"><div className="section-heading compact"><div><p className="eyebrow">The eternal table</p><h2>Manager rankings</h2></div><span>Overall score · qualified managers</span></div>
+        {rankingError&&<p>{rankingError}</p>}<ol className="manager-list">{managers.map(manager => <li key={manager.memberId}><span className="rank">{String(manager.overallRank).padStart(2, "0")}</span><div><Link href={`/museum/managers/${manager.memberId}`}><strong>{manager.teamName}</strong></Link><small>{manager.ownerName} · {manager.playoffAppearances} playoff appearances</small></div><div className="manager-stat"><strong>{manager.overallScore.toFixed(1)}</strong><small>score / 100</small></div><div className="manager-stat"><strong>{manager.winPercentage === null ? "—" : `${(manager.winPercentage * 100).toFixed(1)}%`}</strong><small>win rate</small></div></li>)}</ol><Link href="/museum/managers">View the full overall ranking →</Link>
       </article>
       <aside className="curator-card"><p className="eyebrow">League historian</p><h2>Ask the archive.</h2><p>Who owns the rivalry? Who has the best career record? The statistical historian answers directly from JBL&apos;s preserved records.</p><div className="curator-prompt">“Who has the best career win percentage?”</div><Link className="historian-entry-link" href="/museum/historian">Consult the historian →</Link></aside>
     </section>

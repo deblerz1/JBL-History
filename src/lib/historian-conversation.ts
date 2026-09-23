@@ -20,7 +20,7 @@ export function describeHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus)
   const names=plan.memberIds.map(id=>corpus.managers.find(m=>m.memberId===id)).map(m=>m?.publicName??m?.teamName??"Unknown manager");
   const dates=plan.startYear!==null&&plan.endYear!==null?`${plan.startYear}–${plan.endYear}`:plan.startYear!==null?`since ${plan.startYear}`:plan.endYear!==null?`through ${plan.endYear}`:"all recorded seasons";
   const phase=plan.intent==="manager_playoffs"?"playoffs":plan.gameType.replaceAll("_"," ");
-  if(plan.intent==="best_manager"||plan.intent==="worst_manager")return [names.join(" / ")||"league-wide",dates,`${plan.intent==="best_manager"?"best":"worst"} manager score v1`,"completed seasons only; 3-season qualification"].join(" · ");
+  if(plan.intent==="best_manager"||plan.intent==="worst_manager"||plan.intent==="poor_performance")return [names.join(" / ")||"league-wide",dates,plan.intent==="poor_performance"?"separate poor-performance index":`overall ranking · ${plan.intent==="worst_manager"?"lowest":plan.ranking} first`,"completed seasons only; 3-season qualification"].join(" · ");
   if(plan.intent==="conditional_outcome"&&plan.condition){
     const q=plan.condition;
     const condition=q.recordMode==="exact"?`${q.wins}-${q.losses}${q.ties?`-${q.ties}`:""} through Week ${q.throughWeek}`:`below .500 after Week ${q.throughWeek}`;
