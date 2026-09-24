@@ -1,5 +1,5 @@
 import "server-only";
-import {calculateManagerScores,rankManagerScores,overallManagerRank} from "@/lib/historian-manager-score";
+import {managerRankingPreview} from "@/lib/manager-ranking-preview";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { HistorianCorpus,HistorianPlan } from "@/lib/historian";
 import {positionMetrics,positionScope,verifyPositionGames,type PositionSnapshot} from "@/lib/historian-position";
@@ -108,10 +108,9 @@ export async function getHistorianCorpus():Promise<HistorianCorpus> {
 
 export async function getMuseumOverview() {
   const corpus=await getHistorianCorpus();
-  const scores=calculateManagerScores(corpus);
+  const ranking=managerRankingPreview(corpus);
   const champions:Champion[]=[...corpus.champions].sort((a,b)=>b.year-a.year).map(c=>({year:c.year,teamName:c.teamName,ownerName:c.publicName,runnerUpTeamName:c.runnerUp,championScore:c.score,runnerUpScore:c.runnerUpScore}));
-  const managers=rankManagerScores(scores.rows).filter(m=>m.qualified).slice(0,5).map(m=>({memberId:m.memberId,teamName:m.teamName,ownerName:m.publicName,championships:m.titles,winPercentage:m.winRate,playoffAppearances:m.appearances,overallScore:m.best,overallRank:overallManagerRank(m,scores.rows)}));
-  return {champions,managers,rankingError:scores.error};
+  return {champions,...ranking};
 }
 
 export async function getManagerRankings() {

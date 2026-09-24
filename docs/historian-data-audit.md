@@ -95,3 +95,38 @@ not a position. Count actual starters, including FLEX, excluding bench/IR by def
    relying on full-history completeness at larger league sizes/history lengths.
 
 No luck or positional metric was enabled as part of this audit.
+
+## September 24 follow-up: official versus weekly totals
+
+Read-only inspection of the preserved ESPN matchup payloads found the same
+pattern in all four exceptions. `pointsByScoringPeriod` exactly equals the
+summed roster starters; `totalPoints` equals our official matchup score.
+
+| Season / week | ESPN team ID | Starter sum | ESPN weekly total | ESPN official total | Unattributed difference |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2019 / 11 | 2 | 101.70 | 101.70 | 118.80 | 17.10 |
+| 2021 / 2 | 6 | 118.68 | 118.68 | 143.58 | 24.90 |
+| 2022 / 17 | 9 | 97.40 | 97.40 | 112.40 | 15.00 |
+| 2024 / 3 | 6 | 61.52 | 61.52 | 77.42 | 15.90 |
+
+This localizes the discrepancy to the preserved source's two score fields; it
+is not explained by an arithmetic error in summing our stored starter points.
+A commissioner adjustment or historical source inconsistency is plausible, but
+neither is proven by these fields. No score or lineup was edited. Do not allocate
+the difference to a position, change a bench player into a starter, or replace an
+official matchup total just to make reconciliation pass.
+
+Next evidence needed: the ESPN matchup/commissioner record for these exact
+season-week-team combinations, or a targeted authenticated re-fetch preserving
+both score fields and historical lineup entries. Agreement between roster and
+weekly score alone does not prove a complete lineup or establish who earned the
+extra official points. The existing positional-query gate remains in place.
+
+## Ranking regression coverage — September 24
+
+The actual homepage ranking presenter and Historian dispatcher are now checked
+against independently hand-calculated scores and ranks. Tests cover name/input
+order changes and missing coverage with no substitute title-order ranking.
+These complement existing checks for provisional careers, ties, date ranges,
+active seasons, and the distinct poor-performance index. They run in the free
+local/maintenance test suite and do not make paid model calls.

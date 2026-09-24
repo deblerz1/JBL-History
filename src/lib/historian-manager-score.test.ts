@@ -1,3 +1,5 @@
+import {managerRankingPreview} from "./manager-ranking-preview";
+import {answerHistorianPlan} from "./historian";
 import {expect,it} from "vitest";
 import {answerManagerScore,calculateManagerScores,rankManagerScores,overallManagerRank} from "./historian-manager-score";
 import type {HistorianCorpus,HistorianGame,HistorianPlan} from "./historian";
@@ -99,4 +101,34 @@ it("provisional rows do not become the lowest qualified manager or receive an ov
   expect(worst.table!.rows[0][0]).toBe("c");
   const provisional=calculateManagerScores(c).rows.find(r=>r.memberId==="new")!;
   expect(overallManagerRank(provisional,calculateManagerScores(c).rows)).toBeNull();
+});
+
+// Exercise the actual Historian dispatcher and homepage presenter, not only the
+// scoring helper: these were previously different product paths.
+it("homepage and historian publish the hand-calculated overall scores and ranks",()=>{
+  const c=fixture();
+  const home=managerRankingPreview(c);
+  expect(home.rankingError).toBeUndefined();
+  expect(home.managers.map(m=>[m.memberId,m.overallScore,m.overallRank])).toEqual([["a",100,1],["b",30,2],["c",15,3],["d",0,4]]);
+  const list=answerHistorianPlan(plan,c).table!.rows;
+  expect(list.map(row=>row[0])).toEqual(home.managers.map(m=>m.teamName));
+  for(const m of home.managers){
+    const own=answerHistorianPlan({...plan,memberIds:[m.memberId],output:"single"},c);
+    expect(own.table!.rows[0][2]).toBe(String(m.overallRank));
+    expect(own.answer).toContain(`${m.overallScore.toFixed(1)}/100`);
+  }
+});
+it("both product paths refuse incomplete rankings without falling back to title order",()=>{
+  const c=fixture();c.games.pop();
+  expect(managerRankingPreview(c).managers).toEqual([]);
+  expect(managerRankingPreview(c).rankingError).toContain("coverage");
+  expect(answerHistorianPlan(plan,c).table).toBeUndefined();
+  expect(answerHistorianPlan({...plan,intent:"worst_manager"},c).answer).toContain("coverage");
+});
+it("input order and names cannot change statistical ranks across product paths",()=>{
+  const c=fixture();const expected=managerRankingPreview(c).managers.map(m=>[m.memberId,m.overallRank,m.overallScore]);
+  c.managers.reverse();c.games.reverse();c.seasons.reverse();c.champions.reverse();
+  c.managers=c.managers.map(m=>({...m,teamName:`Renamed ${m.memberId}`}));
+  expect(managerRankingPreview(c).managers.map(m=>[m.memberId,m.overallRank,m.overallScore])).toEqual(expected);
+  expect(answerHistorianPlan({...plan,intent:"worst_manager",output:"single"},c).table!.rows[0][0]).toContain("Renamed d");
 });
