@@ -1,3 +1,5 @@
+> September 24 comparison release: the Historian supports year-by-year tables, up to four statistics with individual season phases, and filter-preserving follow-ups. Shared application limits are 10/minute, 100/day and 1,000/month (UTC); Monday live checks use at most six requests. These are request limits, not a dollar cap. See [comparison and usage details](docs/historian-comparisons-and-usage.md).
+
 > September 24 reliability update: the museum now has a private Coverage page with live per-season successful-import timestamps and stored matchup counts. Historian answers expose their caveats and provide copyable issue details for private review. Copying does not submit a report. Overall rankings are shared across the homepage, manager exhibit, and Historian; “worst” means the lowest qualified overall score. Some older milestone notes below are historical and await consolidation.
 
 # JBL History

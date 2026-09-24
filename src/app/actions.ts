@@ -1,4 +1,5 @@
 "use server";
+import {createServerSupabaseClient} from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { clearLeagueSession, credentialsMatch, isLeagueSessionValid, setLeagueSession } from "@/lib/auth/session";
 import { getHistorianCorpus,loadHistorianPositions } from "@/lib/data/museum";
@@ -28,6 +29,10 @@ export async function askHistorian(question:string,context?:HistorianContext):Pr
   if(!(await isLeagueSessionValid())) return {answer:"The archive is locked. Return to the entrance and enter the league access code.",facts:[],href:"/",hrefLabel:"Return to entrance"};
   const clean=typeof question==="string"?question.trim():"";
   if(!clean||clean.length>240) return {answer:"Ask one statistical question in 240 characters or fewer.",facts:[]};
+  try{
+    const budget=await createServerSupabaseClient().rpc("reserve_historian_request");
+    if(budget.error||budget.data!=="allowed")return {answer:budget.error?"The historian's usage check is temporarily unavailable. Please try again later.":`The league's shared ${budget.data} request limit has been reached. Please try again after the next UTC ${budget.data} begins.`,facts:["Shared limits: 10 requests per minute, 100 per day, 1,000 per calendar month. No model request was sent."]};
+  }catch{return {answer:"The historian's usage check is temporarily unavailable. Please try again later.",facts:["No model request was sent."]};}
   const corpus=await getHistorianCorpus();
   const clarification=ambiguousManagerQuestion(clean,corpus);
   if(clarification)return {answer:clarification,facts:[],context:{question:clean,plan:null}};

@@ -27,5 +27,16 @@ export function describeHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus)
     const format=q.format==="current"?"latest team count + playoff spots":q.format==="year"?`${q.formatYear} format`:q.format==="team_count"?`${q.teamCount}-team era`:q.format==="compare"?"separate formats":"all formats";
     return [names.join(" / ")||"league-wide",dates,condition,q.outcome==="playoffs"?"playoff qualification":"championship",format].join(" · ");
   }
-  return [names.join(" / ")||"league-wide",dates,phase==="all"?"regular season + playoffs":phase,plan.position?`${plan.position} starters`:null,plan.metric?.replaceAll("_"," "),plan.windowYears?`${plan.windowYears}-season windows`:null,plan.population==="active_every_season"?"active every season":null,plan.minimumGames?`minimum ${plan.minimumGames} games`:null].filter(Boolean).join(" · ");
+  return [names.join(" / ")||"league-wide",dates,phase==="all"?"regular season + playoffs":phase,plan.position?`${plan.position} starters`:null,plan.measures?.length?plan.measures.map(m=>`${m.metric.replaceAll("_"," ")} (${m.gameType.replaceAll("_"," ")})`).join(", "):plan.metric?.replaceAll("_"," "),plan.groupBy==="season"?"year by year":null,plan.windowYears?`${plan.windowYears}-season windows`:null,plan.population==="active_every_season"?"active every season":null,plan.minimumGames?`minimum ${plan.minimumGames} games`:null].filter(Boolean).join(" · ");
+}
+
+// Exact follow-up edits operate on a validated resolved plan, so a long chain
+// retains its meaning without sending the whole transcript to the provider.
+export function applyHistorianFollowup(question:string,previous:HistorianPlan):HistorianPlan|null{
+ const q=question.toLowerCase().trim().replace(/[.!?]+$/,"");
+ if(q==="now playoffs only"||q==="playoffs only")return {...previous,gameType:"playoffs",measures:previous.measures?.map(m=>({...m,gameType:"playoffs"}))};
+ if(q==="show everyone"||q==="now everyone")return {...previous,memberIds:[],output:"list"};
+ const excluded=q.match(/^(?:now )?exclude (20\d{2})$/);
+ if(excluded){const year=Number(excluded[1]);const end=previous.endYear??new Date().getUTCFullYear();if(year!==end||previous.startYear!==null&&previous.startYear>=year)return null;return {...previous,endYear:year-1};}
+ return null;
 }

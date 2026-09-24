@@ -1,6 +1,8 @@
 name: Historian live Luna evaluation
 
 on:
+  schedule:
+    - cron: '41 12 * * 1'
   workflow_dispatch:
     inputs:
       category:
@@ -56,8 +58,10 @@ jobs:
           JBL_EVAL_LIMIT: ${{ (github.event_name == 'push' || inputs.category == 'remaining') && '50' || '10' }}
           JBL_EVAL_CATEGORY: ${{ github.event_name == 'push' && 'remaining' || inputs.category != 'all' && inputs.category || '' }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "push" ] || [ "$JBL_EVAL_CATEGORY" = "analytics" ]; then
-            npm test -- src/lib/historian-conversation-live.test.ts src/lib/historian-metrics-live.test.ts src/lib/historian-outcomes-live.test.ts src/lib/historian-position-live.test.ts src/lib/historian-manager-score-live.test.ts
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            npm test -- src/lib/historian-comparison-live.test.ts
+          elif [ "$GITHUB_EVENT_NAME" = "push" ] || [ "$JBL_EVAL_CATEGORY" = "analytics" ]; then
+            npm test -- src/lib/historian-conversation-live.test.ts src/lib/historian-metrics-live.test.ts src/lib/historian-outcomes-live.test.ts src/lib/historian-position-live.test.ts src/lib/historian-manager-score-live.test.ts src/lib/historian-comparison-live.test.ts
           else
             npm test -- src/lib/historian-live.test.ts
           fi
@@ -67,4 +71,4 @@ jobs:
           RESULT: ${{ job.status }}
         run: |
           echo "Live evaluation job: $RESULT" >> "$GITHUB_STEP_SUMMARY"
-          echo 'Push/analytics: at most 33 requests for metrics, luck, conditional outcomes, positional scoring, manager composites and follow-ups. Remaining category: at most 50; other categories: at most 10. Synthetic identities only, no database access. Request limits are not dollar spending caps.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Scheduled Mondays: at most 6 requests (no retries). Push/analytics: at most 39 requests for metrics, luck, conditional outcomes, positional scoring, manager composites and follow-ups. Remaining category: at most 50; other categories: at most 10. Synthetic identities only, no database access. Request limits are not dollar spending caps.' >> "$GITHUB_STEP_SUMMARY"

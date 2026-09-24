@@ -24,7 +24,8 @@ export const historianPopulations=["all","active_every_season"] as const;
 export type HistorianPopulation=(typeof historianPopulations)[number];
 export const historianOutputs=["single","list"] as const;
 export type HistorianOutput=(typeof historianOutputs)[number];
-export type HistorianPlan={position?:HistorianPosition|null;condition?:OutcomeQuery|null;intent:HistorianIntent;memberIds:string[];startYear:number|null;endYear:number|null;metric:HistorianMetric|null;gameType:HistorianGameType;ranking:HistorianRanking;windowYears:number|null;minimumGames:number|null;population:HistorianPopulation;output:HistorianOutput;limit:number|null};
+export type HistorianMeasure={metric:HistorianMetric;gameType:HistorianGameType};
+export type HistorianPlan={groupBy?:"manager"|"season";measures?:HistorianMeasure[];position?:HistorianPosition|null;condition?:OutcomeQuery|null;intent:HistorianIntent;memberIds:string[];startYear:number|null;endYear:number|null;metric:HistorianMetric|null;gameType:HistorianGameType;ranking:HistorianRanking;windowYears:number|null;minimumGames:number|null;population:HistorianPopulation;output:HistorianOutput;limit:number|null};
 
 export function deterministicHistorianPlan(rawQuestion:string):HistorianPlan|null{
   const question=rawQuestion.toLowerCase().replace(/[’']/g,"'");
@@ -67,6 +68,7 @@ function mentionedManagers(question:string,corpus:HistorianCorpus){
 }
 
 export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse {
+  if(plan.groupBy==="season"||plan.measures?.length)return answerComparison(plan,corpus);
   if(plan.intent==="best_manager"||plan.intent==="worst_manager"||plan.intent==="poor_performance")return answerManagerScore(plan,corpus);
   if(plan.intent==="conditional_outcome")return answerConditionalOutcome(plan,corpus);
   if(plan.intent==="rank_metric")return answerRankedMetric(plan,corpus);
@@ -145,6 +147,37 @@ export function answerHistorianPlan(plan:HistorianPlan,corpus:HistorianCorpus):H
   if(plan.intent==="highest_score"||plan.intent==="lowest_score"){const type=plan.intent==="highest_score"?"highest_score":"lowest_score";const rows=corpus.records.filter(r=>r.type===type&&(!first||r.memberId===first.memberId)).sort((a,b)=>type==="highest_score"?b.value-a.value:a.value-b.value);const result=rows[0];if(result)return {answer:`The ${first?`${first.teamName} `:""}${type==="highest_score"?"highest":"lowest"} recorded true single-week score is ${result.value.toFixed(2)} in Week ${result.week} of ${result.year}, against ${result.opponent}.`,facts:[result.publicName??result.teamName,"Multi-week aggregates excluded"],href:"/museum/records",hrefLabel:"Open the record book"};}
   if(plan.intent==="season_summary"&&plan.startYear!==null){const rows=corpus.seasons.filter(s=>s.year===plan.startYear).sort((a,b)=>(a.finalStanding??99)-(b.finalStanding??99));const top=rows[0];if(top)return {answer:`${top.teamName} finished first in ${plan.startYear} at ${record(top.wins,top.losses,top.ties)} with ${top.pointsFor.toFixed(1)} points scored.`,facts:[`${rows.length} teams recorded`,top.finalStanding===1?"Official final standing: 1":"Season still in progress"],href:`/museum/seasons/${plan.startYear}`,hrefLabel:`Browse ${plan.startYear}`};}
   return unsupportedAnswer();
+}
+
+function answerComparison(plan:HistorianPlan,corpus:HistorianCorpus):HistorianResponse {
+  if(plan.intent!=="rank_metric"||plan.windowYears!==null||plan.position)return {answer:"Season breakdowns and multi-stat comparisons currently support non-positional metrics without rolling windows. I haven't dropped any requested filters.",facts:[]};
+  const measures=plan.measures?.length?plan.measures:plan.metric?[{metric:plan.metric,gameType:plan.gameType}]:[];
+  if(!measures.length||measures.length>4)return {answer:"Choose between one and four statistics to compare.",facts:[]};
+  const years=[...new Set(corpus.games.map(g=>g.year))].filter(y=>(plan.startYear===null||y>=plan.startYear)&&(plan.endYear===null||y<=plan.endYear)).sort((a,b)=>a-b);
+  if(!years.length)return {answer:"No completed games match those dates.",facts:[]};
+  const first=plan.startYear??years[0],last=plan.endYear??years.at(-1)!;
+  const members=corpus.managers.filter(m=>(!plan.memberIds.length||plan.memberIds.includes(m.memberId))&&(plan.population!=="active_every_season"||Array.from({length:last-first+1},(_,i)=>first+i).every(y=>corpus.seasons.some(s=>s.memberId===m.memberId&&s.year===y))));
+  const notes=new Set<string>(["Only recorded completed games are counted. A dash means no qualifying games or an undefined metric; it is not zero.","Each statistic uses its labeled phase. Regular-season and playoff games are not silently combined."]);
+  const rows:string[][]=[];
+  for(const year of plan.groupBy==="season"?years:[null])for(const manager of members){
+    const values:string[]=[];let any=false;
+    for(const measure of measures){
+      const result=answerRankedMetric({...plan,measures:undefined,groupBy:undefined,metric:measure.metric,gameType:measure.gameType,memberIds:[manager.memberId],startYear:year??first,endYear:year??last,population:"all",output:"list",limit:null},corpus);
+      if(!result.table){
+        if(/No completed games|No manager met|statistic is undefined/.test(result.answer)){values.push("—");continue;}
+        return result; // Never present a partial comparison after a coverage refusal.
+      }
+      any=true;values.push(result.table.rows[0][4]);
+      for(const note of result.notes??[])notes.add(note);
+    }
+    if(any){const historic=year===null?null:corpus.seasons.find(s=>s.year===year&&s.memberId===manager.memberId)?.teamName;rows.push([historic??manager.teamName,manager.publicName??"",year===null?`${first}–${last}`:String(year),...values]);}
+  }
+  // Preserve year chronology. Within each year sort by the explicitly selected
+  // first measure; missing values stay last. Formatted percentages share scale.
+  rows.sort((a,b)=>(plan.groupBy==="season"?Number(a[2])-Number(b[2]):0)||(a[3]==="—"&&b[3]==="—"?0:a[3]==="—"?1:b[3]==="—"?-1:(plan.ranking==="highest"?-1:1)*(parseFloat(a[3])-parseFloat(b[3])))||a[0].localeCompare(b[0]));
+  const listed=plan.limit===null?rows:rows.slice(0,plan.limit);
+  if(listed.length<rows.length)notes.add(`Showing ${listed.length} of ${rows.length} rows due to your requested limit.`);
+  return {answer:`${plan.groupBy==="season"?"Season-by-season results":"Statistical comparison"} for ${first}–${last}. Sorted ${plan.ranking} first by the first statistic${plan.groupBy==="season"?" within each season":""}.`,facts:[],notes:[...notes],table:{caption:"Recorded results by manager"+(plan.groupBy==="season"?" and season":""),columns:["Team","Manager","Seasons",...measures.map(m=>`${metricDefinition(m.metric).label} · ${m.gameType.replaceAll("_"," ")}`)],rows:listed},href:"/museum/seasons",hrefLabel:"Browse supporting seasons"};
 }
 
 type RankedMetricRow={manager:HistorianManager;startYear:number;endYear:number;games:number;wins:number;losses:number;ties:number;points:number;opponentPoints:number;expectedWins:number;value:number};
