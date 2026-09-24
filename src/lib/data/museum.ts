@@ -1,3 +1,4 @@
+import {paginatedRows} from "@/lib/paginated-rows";
 import "server-only";
 import {managerRankingPreview} from "@/lib/manager-ranking-preview";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -186,7 +187,7 @@ export async function getRivalries(): Promise<Rivalry[]> {
 }
 
 export async function getDraftHistory() {
-  const supabase=createServerSupabaseClient(); const [{data,error},identities]=await Promise.all([supabase.from("analytics_draft_picks").select("year,draft_type,member_id,team_name,overall_pick_number,round_number,round_pick_number,bid_amount,is_keeper,player_name,default_position,pro_team").order("year",{ascending:false}).order("overall_pick_number"),identityMap(supabase)]);
+  const supabase=createServerSupabaseClient(); const [{data,error},identities]=await Promise.all([paginatedRows((from,to)=>supabase.from("analytics_draft_picks").select("year,draft_type,member_id,team_name,overall_pick_number,round_number,round_pick_number,bid_amount,is_keeper,player_name,default_position,pro_team").order("year",{ascending:false}).order("overall_pick_number").range(from,to)),identityMap(supabase)]);
   if (error) throw new Error(`Draft history query failed: ${error.message}`);
   return data.map(row=>({...row,public_name:identities.get(row.member_id)??null}));
 }
@@ -194,8 +195,8 @@ export async function getDraftHistory() {
 export async function getTransactionHistory() {
   const supabase=createServerSupabaseClient();
   const [transactionsResult,itemsResult,teamsResult,totalsResult,identities]=await Promise.all([
-    supabase.from("transactions").select("id,season_id,transaction_type,status,processed_at").order("processed_at",{ascending:false}),
-    supabase.from("transaction_items").select("id,transaction_id,player_id,from_team_id,to_team_id,item_type,bid_amount"),
+    paginatedRows((from,to)=>supabase.from("transactions").select("id,season_id,transaction_type,status,processed_at").order("processed_at",{ascending:false}).order("id").range(from,to)),
+    paginatedRows((from,to)=>supabase.from("transaction_items").select("id,transaction_id,player_id,from_team_id,to_team_id,item_type,bid_amount").order("id").range(from,to)),
     supabase.from("analytics_season_standings").select("season_id,season_team_id,member_id,team_name,year"),
     supabase.from("analytics_transaction_totals").select("year,season_team_id,member_id,team_name,transactions").order("year",{ascending:false}).order("transactions",{ascending:false}),identityMap(supabase),
   ]);
@@ -211,7 +212,7 @@ export async function getTransactionHistory() {
   const events=transactionsResult.data.map(transaction=>({id:transaction.id,year:seasonYears.get(transaction.season_id)??0,type:transaction.transaction_type,status:transaction.status,processedAt:transaction.processed_at,
     items:itemsResult.data.filter(item=>item.transaction_id===transaction.id).map(item=>{const player=players.get(item.player_id); const from=teams.get(item.from_team_id); const to=teams.get(item.to_team_id); return {id:item.id,itemType:item.item_type,bidAmount:item.bid_amount===null?null:Number(item.bid_amount),playerName:player?.full_name??"Player unavailable",position:player?.default_position??null,proTeam:player?.pro_team??null,fromTeam:from?.team_name??null,toTeam:to?.team_name??null,managerName:identities.get((to??from)?.member_id)??null};}),
   }));
-  return {events,totals:totalsResult.data.map(row=>({...row,public_name:identities.get(row.member_id)??null})),years:[...new Set(events.map(event=>event.year))].filter(Boolean).sort((a,b)=>b-a)};
+  return {coverage:[...new Set(teamsResult.data.map(row=>Number(row.year)))].sort((a,b)=>b-a).map(year=>({year,events:events.filter(e=>e.year===year).length})),events,totals:totalsResult.data.map(row=>({...row,public_name:identities.get(row.member_id)??null})),years:[...new Set(events.map(event=>event.year))].filter(Boolean).sort((a,b)=>b-a)};
 }
 
 export async function getLeagueRecords() {
