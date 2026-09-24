@@ -1,3 +1,5 @@
+> September 24 reliability update: the museum now has a private Coverage page with live per-season successful-import timestamps and stored matchup counts. Historian answers expose their caveats and provide copyable issue details for private review. Copying does not submit a report. Overall rankings are shared across the homepage, manager exhibit, and Historian; “worst” means the lowest qualified overall score. Some older milestone notes below are historical and await consolidation.
+
 # JBL History
 
 A private-data, read-only historical analytics platform for the **Joey Bags Fantasy League**, backed by ESPN Fantasy Football and Supabase.
