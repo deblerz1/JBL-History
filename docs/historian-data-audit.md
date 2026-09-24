@@ -130,3 +130,21 @@ order changes and missing coverage with no substitute title-order ranking.
 These complement existing checks for provisional careers, ties, date ranges,
 active seasons, and the distinct poor-performance index. They run in the free
 local/maintenance test suite and do not make paid model calls.
+
+## Commissioner confirmation — September 24
+
+The commissioner confirmed all four adjustments and supplied ESPN screenshots
+showing +17.1, +24.9, +15.0 and +15.9 respectively. These supersede the earlier
+unresolved-cause notes above. The reviewed registry is stored in
+`src/lib/commissioner-adjustments.ts`, keyed by season, season-team ID and week.
+No database scores, winners or roster entries were changed.
+
+Position verification now requires starter total plus only these confirmed
+adjustments to equal the official total within the existing 0.02 tolerance.
+Other missing/duplicate/invalid lineup checks remain. Adjustment points stay
+team-level, never player- or position-level. Position scoring share retains the
+official team total as denominator, explicitly disclosed in answers. Matchup
+pages display the arithmetic when it reconciles, or a discrepancy notice if
+source data changes. These four records do not authorize inferred adjustments
+for any other game. Regression tests cover each adjustment and ensure an extra
+unexplained point still fails verification.

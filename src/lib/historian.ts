@@ -1,3 +1,4 @@
+import {commissionerAdjustment} from "./commissioner-adjustments";
 import {answerConditionalOutcome,type OutcomeQuery,type SeasonFormat} from "./historian-outcomes";
 import {answerManagerScore} from "./historian-manager-score";
 import {prepareLuckGames} from "./historian-luck";
@@ -194,7 +195,7 @@ function answerRankedMetric(plan:HistorianPlan,corpus:HistorianCorpus):Historian
     }
   }
   rows.sort((a,b)=>(plan.ranking==="highest"?b.value-a.value:a.value-b.value)||b.games-a.games||a.startYear-b.startYear);
-  const notes=[...coverage,`Formula: ${definition.formula}`,...(definition.note?[definition.note]:[]),...(undefinedRows?[`${undefinedRows} manager/window results excluded because the formula was undefined (such as a zero denominator).`]:[]),...(plan.gameType!=="regular_season"?["Games are completed matchups; a multi-week playoff matchup counts as one game. Consolation games excluded."]:[])];
+  const notes=[...(isPosition?["Position points count recorded starters only. Confirmed commissioner adjustments are team-level points and are not assigned to players or positions. Scoring share uses the official team total, including adjustments.",...positionScope(plan,corpus).filter(g=>commissionerAdjustment(g.year,g.seasonTeamId,g.scoringWeeks)!==0).map(g=>`${g.teamName}, ${g.year}, Week ${g.scoringWeeks?.join(", ")}: +${commissionerAdjustment(g.year,g.seasonTeamId,g.scoringWeeks).toFixed(2)} commissioner adjustment excluded from position points.`)]:[]),...coverage,`Formula: ${definition.formula}`,...(definition.note?[definition.note]:[]),...(undefinedRows?[`${undefinedRows} manager/window results excluded because the formula was undefined (such as a zero denominator).`]:[]),...(plan.gameType!=="regular_season"?["Games are completed matchups; a multi-week playoff matchup counts as one game. Consolation games excluded."]:[])];
   const winner=rows[0]; if(!winner)return {answer:undefinedRows?"This statistic is undefined for the matching results; no ranking was assigned.":"No manager met the requested sample and season requirements.",facts:undefinedRows?notes:["Try a wider date range or a smaller minimum-games requirement."]};
   const phase=plan.gameType==="regular_season"?"regular-season":plan.gameType==="playoffs"?"playoff":"combined";
   if(plan.output==="list"){

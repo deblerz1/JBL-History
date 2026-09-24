@@ -1,3 +1,4 @@
+import {commissionerAdjustment} from "./commissioner-adjustments";
 import type {HistorianCorpus,HistorianGame,HistorianPlan} from "./historian";
 
 export const positions=["QB","RB","WR","TE","K","D/ST"] as const;
@@ -38,7 +39,7 @@ export function verifyPositionGames(games:HistorianGame[],snapshots:PositionSnap
       }
       if(!starters)return fail(`missing starters in Week ${week}`);
     }
-    if(!Number.isFinite(game.points)||Math.abs(total-game.points)>.020001)return fail("starter scores do not reconcile with official score");
+    if(!Number.isFinite(game.points)||Math.abs(total+commissionerAdjustment(game.year,game.seasonTeamId,scoringWeeks)-game.points)>.020001)return fail("starter scores do not reconcile with official score");
     return {...game,positionPoints:selected,positionVerified:position,positionFailure:undefined};
   });
 }

@@ -1,3 +1,4 @@
+import {confirmedAdjustments,commissionerAdjustment} from "./commissioner-adjustments";
 import {expect,it} from "vitest";
 import {answerHistorianPlan,type HistorianCorpus,type HistorianGame,type HistorianPlan} from "./historian";
 import {positionScope,verifyPositionGames,type PositionSnapshot} from "./historian-position";
@@ -49,4 +50,18 @@ it("supports zero position points, phase/date filters and empty corpora",()=>{
   expect(positionScope({...plan,gameType:"playoffs"},corpus(games))).toEqual([]);
   expect(positionScope({...plan,startYear:2026,endYear:2026},corpus(games))).toEqual([]);
   expect(positionScope(plan,corpus([]))).toEqual([]);
+});
+
+it.each(confirmedAdjustments)("reconciles confirmed adjustment $year week $week without assigning it to a position",a=>{
+ const g={...game,year:a.year,seasonTeamId:a.seasonTeamId,scoringWeeks:[a.week],points:30+a.points};
+ const roster=snapshots.map(r=>({...r,season_team_id:a.seasonTeamId,matchup_period:a.week}));
+ const verified=verifyPositionGames([g],roster,"RB");
+ expect(verified[0].positionPoints).toBe(10);
+ expect(verified[0].points).toBe(30+a.points);
+ expect(verified[0].positionFailure).toBeUndefined();
+ const answer=answerHistorianPlan({...plan,startYear:a.year,endYear:a.year},corpus(verified));
+ expect(answer.facts.join(" ")).toContain(`+${a.points.toFixed(2)} commissioner adjustment`);
+ expect(verifyPositionGames([{...g,points:g.points+1}],roster,"RB")[0].positionFailure).toBeTruthy();
+ expect(commissionerAdjustment(a.year,"other",[a.week])).toBe(0);
+ expect(commissionerAdjustment(a.year,a.seasonTeamId,[a.week+1])).toBe(0);
 });
