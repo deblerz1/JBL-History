@@ -175,6 +175,7 @@ function answerComparison(plan:HistorianPlan,corpus:HistorianCorpus):HistorianRe
   // Preserve year chronology. Within each year sort by the explicitly selected
   // first measure; missing values stay last. Formatted percentages share scale.
   rows.sort((a,b)=>(plan.groupBy==="season"?Number(a[2])-Number(b[2]):0)||(a[3]==="—"&&b[3]==="—"?0:a[3]==="—"?1:b[3]==="—"?-1:(plan.ranking==="highest"?-1:1)*(parseFloat(a[3])-parseFloat(b[3])))||a[0].localeCompare(b[0]));
+  if(!rows.length)return {answer:"No manager met the requested sample and season requirements.",facts:[...notes]};
   const listed=plan.limit===null?rows:rows.slice(0,plan.limit);
   if(listed.length<rows.length)notes.add(`Showing ${listed.length} of ${rows.length} rows due to your requested limit.`);
   return {answer:`${plan.groupBy==="season"?"Season-by-season results":"Statistical comparison"} for ${first}–${last}. Sorted ${plan.ranking} first by the first statistic${plan.groupBy==="season"?" within each season":""}.`,facts:[],notes:[...notes],table:{caption:"Recorded results by manager"+(plan.groupBy==="season"?" and season":""),columns:["Team","Manager","Seasons",...measures.map(m=>`${metricDefinition(m.metric).label} · ${m.gameType.replaceAll("_"," ")}`)],rows:listed},href:"/museum/seasons",hrefLabel:"Browse supporting seasons"};

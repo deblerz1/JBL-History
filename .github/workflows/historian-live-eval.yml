@@ -1,4 +1,5 @@
 name: Historian live Luna evaluation
+# Validate comparison dimensions alongside existing query modes.
 
 on:
   schedule:

@@ -27,3 +27,10 @@ it("preserves a chain's measures and dates while changing only requested filters
  expect(third.measures).toEqual(first.measures);
  expect(applyHistorianFollowup("exclude 2024",first)).toBeNull();
 });
+
+it("applies every-season qualification across the full interval before grouping",()=>{
+ const c={...corpus,seasons:[2024,2025].map(year=>({year,memberId:"a",teamName:`Historic a ${year}`,wins:0,losses:0,ties:0,pointsFor:0,finalStanding:null}))};
+ const result=answerHistorianPlan({...plan,memberIds:[],population:"active_every_season"},c);
+ expect(result.table!.rows.map(r=>r[0])).toEqual(["Historic a 2024","Historic a 2025"]);
+ expect(answerHistorianPlan({...plan,minimumGames:100},c).answer).toContain("No manager met");
+});
