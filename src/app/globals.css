@@ -324,3 +324,55 @@ button,input { font:inherit; } a { color:inherit; text-decoration:none; }
 @media (max-width:900px) { .entry-hero,.museum-grid { grid-template-columns:1fr; } .entry-copy { text-align:center; } .entry-deck { margin-left:auto; margin-right:auto; } .entry-hero { padding:60px 0; } .access-card { width:min(500px,100%); margin:auto; } .museum-nav nav { display:none; } .collection-grid { grid-template-columns:repeat(2,1fr); } .rivalry-grid,.record-columns,.draft-team-grid { grid-template-columns:1fr; } }
 @media (max-width:560px) { .public-entry { padding-top:24px; } .entry-header { justify-content:center; } .entry-copy h1 { font-size:3.35rem; } .entry-footer { gap:9px; flex-wrap:wrap; } .entry-footer i { display:none; } .museum-nav { min-height:75px; } .nav-brand small { display:none; } .quiet-button { padding:8px; font-size:.58rem; } .museum-intro { text-align:left; padding:70px 0 50px; } .museum-intro h1 { font-size:3.4rem; } .section-heading { align-items:start; flex-direction:column; gap:8px; } .champion-gallery,.museum-grid,.collections { padding:45px 0; } .champion-track { margin-right:-18px; } .manager-list li { grid-template-columns:35px minmax(0,1fr) 55px; } .manager-stat:last-child { display:none; } .collection-grid { grid-template-columns:1fr; } .collection-grid article { min-height:210px; } .museum-footer { flex-direction:column; gap:9px; } .exhibit-header { padding:55px 0 38px; } .exhibit-header>a { margin-bottom:35px; } .season-card summary { grid-template-columns:1fr auto 20px; padding:20px 16px; } .season-card summary>span:nth-child(2) { max-width:130px; text-align:right; } .season-body { padding:0 12px 16px; } .season-champion { align-items:start; flex-direction:column; gap:5px; } .draft-team header { padding:17px 15px; } .draft-team ol { padding:0 15px; } .draft-team li { grid-template-columns:22px minmax(0,1fr); gap:9px; padding:9px 0; } .draft-team li>b { grid-column:2; text-align:left; } .rivalry-controls { grid-template-columns:1fr; } .rivalry-controls p { margin:2px 0 0; } .rivalry-card { padding-right:14px; padding-left:14px; } .record-panel { padding:24px 18px; } .playoff-controls { align-items:start; flex-direction:column; } .playoff-controls>div { width:calc(100vw - 36px); } .bracket-shell { margin-right:-18px; } .bracket { gap:30px; min-width:790px; padding:22px 18px; } .matchup-detail-header h1 { align-items:stretch; flex-direction:column; gap:8px; } .matchup-scoreboard { grid-template-columns:1fr 36px 1fr; gap:8px; padding:14px 10px; } .matchup-scoreboard>div,.matchup-scoreboard>div:last-child { align-items:center; flex-direction:column; gap:7px; text-align:center; } .lineup-columns { grid-template-columns:1fr; } .lineup-columns>section { padding:22px 17px 25px; } .lineup-columns>section+section { border-top:1px solid rgba(255,255,255,.08); border-left:0; } .matchup-week>header { padding:20px 17px; } }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+
+/* Museum usability: retain every exhibit on narrow screens. */
+:where(a,button,input,select,summary):focus-visible { outline:2px solid var(--gold-light); outline-offset:4px; }
+.museum-nav { flex-wrap:wrap; gap:16px; padding-block:18px; }
+.museum-nav nav { flex-wrap:wrap; gap:4px 16px; }
+.museum-nav nav a { display:flex; align-items:center; min-height:44px; }
+.quiet-button,.week-jump a,.historian-suggestions button { min-height:44px; }
+.week-jump a { display:flex; align-items:center; }
+.historian-message { min-width:0; overflow-wrap:anywhere; }
+.historian-message.historian { width:100%; max-width:100%; }
+.historian-table-wrap,.data-table-wrap { overscroll-behavior-x:contain; scrollbar-color:var(--gold) #13241b; }
+.historian-table td { font-variant-numeric:tabular-nums; }
+.historian-form>small { color:var(--muted); font-size:.75rem; line-height:1.6; }
+.historian-suggestions button { max-width:300px; white-space:normal; text-align:left; line-height:1.5; }
+.season-card summary>span:first-child { min-width:0; flex-wrap:wrap; gap:6px 15px; }
+.season-body>p { color:var(--muted); font-size:.85rem; line-height:1.65; }
+.season-body>p a { color:var(--gold-light); text-decoration:underline; text-underline-offset:3px; }
+.coverage-notice { grid-template-columns:1fr; gap:8px; }
+.coverage-notice p { font-size:.85rem; line-height:1.65; }
+.transaction-leaders { margin-top:32px; }
+.transaction-leaders article { grid-template-columns:44px minmax(0,1fr) auto; }
+@media (max-width:1100px) {
+  .museum-nav nav { order:3; width:100%; }
+}
+@media (max-width:900px) {
+  .museum-nav nav { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px; padding:4px 2px 10px; scrollbar-color:var(--gold) #13241b; }
+  .museum-nav nav a { flex:none; padding:8px 12px; border:1px solid var(--line); }
+}
+@media (max-width:560px) {
+  .historian-log { min-height:240px; max-height:65svh; padding:16px; }
+  .historian-message.visitor { max-width:92%; }
+  .historian-message>p { padding:13px; font-size:1rem; }
+  .historian-message li { font-size:.7rem; line-height:1.5; }
+  .historian-message>a { font-size:.7rem; padding-block:12px; }
+  .historian-suggestions,.historian-form { padding-inline:16px; }
+  .historian-suggestions button { max-width:250px; font-size:.75rem; }
+  .historian-form input { font-size:16px; padding:14px 10px; }
+  .historian-form button { min-width:58px; padding-inline:12px; }
+  .historian-table { font-size:.8rem; }
+  .historian-table th,.historian-table td { padding:10px; }
+  .data-table-wrap::before { content:"Swipe table to view all columns →"; display:block; padding:10px 14px; color:var(--gold-light); font-size:.7rem; }
+  .exhibit-header h1,.profile-hero h1 { overflow-wrap:anywhere; }
+  .season-card summary { gap:10px; }
+  .season-card summary>span:nth-child(2) { max-width:95px; line-height:1.5; }
+  .transaction-item { gap:8px; padding-inline:12px; }
+  .transaction-item>div,.transaction-item p { min-width:0; overflow-wrap:anywhere; }
+  .champion-track { scroll-snap-type:x proximity; }
+  .champion-card { scroll-snap-align:start; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; }
+}
